@@ -3,13 +3,21 @@ extends Node3D
 
 const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 
+const PlatformerEnemy3D = preload("res://scripts/enemy_3d.gd")
+const PlatformerMushroom3D = preload("res://scripts/mushroom_3d.gd")
+
 signal coin_collected(col: int, row: int)
 signal goal_reached
+signal enemy_spawned(enemy: PlatformerEnemy3D)
+signal mushroom_spawned(mushroom: PlatformerMushroom3D)
+signal brick_shattered(pos: Vector3)
 
 var level_width_cols: int = 0
 var level_height_rows: int = 0
 var flagpole_col: int = 198
 var question_blocks: Dictionary = {}
+var enemies: Array[PlatformerEnemy3D] = []
+var powerups: Array[PlatformerMushroom3D] = []
 
 var mat_ground: StandardMaterial3D
 var mat_brick: StandardMaterial3D
@@ -55,6 +63,8 @@ func clear() -> void:
 	for child in get_children():
 		child.queue_free()
 	question_blocks.clear()
+	enemies.clear()
+	powerups.clear()
 	level_width_cols = 0
 	level_height_rows = 0
 
@@ -102,11 +112,15 @@ func _create_tile_3d(char: String, col: int, row: int, pos: Vector3, ts: float) 
 		"X":
 			_create_solid_cube_3d(pos, ts, mat_ground, "Ground")
 		"S":
-			_create_solid_cube_3d(pos, ts, mat_brick, "Brick")
+			_create_brick_cube_3d(pos, ts, col, row)
 		"?", "Q":
 			_create_question_cube_3d(pos, ts, col, row)
 		"<", ">", "[", "]":
 			_create_solid_cube_3d(pos, ts, mat_pipe, "Pipe", 1.2)
+		"E":
+			_create_enemy_3d(pos, ts)
+		"M":
+			_create_mushroom_3d(pos, ts)
 		"F", "|":
 			flagpole_col = col
 			_create_flagpole_3d(pos, ts)
@@ -131,6 +145,29 @@ func _create_solid_cube_3d(pos: Vector3, ts: float, mat: StandardMaterial3D, nam
 
 	add_child(body)
 
+func _create_brick_cube_3d(pos: Vector3, ts: float, col: int, row: int) -> void:
+	var body := StaticBody3D.new()
+	body.name = "Brick3D_%d_%d" % [col, row]
+	body.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	body.add_to_group("brick_blocks_3d")
+	body.set_meta("col", col)
+	body.set_meta("row", row)
+
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(ts, ts, ts)
+	shape.shape = box
+	body.add_child(shape)
+
+	var mesh_inst := MeshInstance3D.new()
+	var box_mesh := BoxMesh.new()
+	box_mesh.size = Vector3(ts, ts, ts)
+	box_mesh.material = mat_brick
+	mesh_inst.mesh = box_mesh
+	body.add_child(mesh_inst)
+
+	add_child(body)
+
 func _create_question_cube_3d(pos: Vector3, ts: float, col: int, row: int) -> void:
 	var body := StaticBody3D.new()
 	body.name = "QuestionBlock3D_%d_%d" % [col, row]
@@ -138,6 +175,9 @@ func _create_question_cube_3d(pos: Vector3, ts: float, col: int, row: int) -> vo
 	body.add_to_group("question_blocks_3d")
 	body.set_meta("col", col)
 	body.set_meta("row", row)
+	body.set_meta("hit", false)
+	var has_mushroom: bool = (question_blocks.is_empty() or col % 4 == 0)
+	body.set_meta("has_mushroom", has_mushroom)
 	body.set_meta("hit", false)
 
 	var shape := CollisionShape3D.new()
@@ -156,6 +196,20 @@ func _create_question_cube_3d(pos: Vector3, ts: float, col: int, row: int) -> vo
 
 	question_blocks[Vector2i(col, row)] = body
 	add_child(body)
+
+func _create_enemy_3d(pos: Vector3, ts: float) -> void:
+	var enemy := PlatformerEnemy3D.new()
+	enemy.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	enemies.append(enemy)
+	add_child(enemy)
+	enemy_spawned.emit(enemy)
+
+func _create_mushroom_3d(pos: Vector3, ts: float) -> void:
+	var mushroom := PlatformerMushroom3D.new()
+	mushroom.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	powerups.append(mushroom)
+	add_child(mushroom)
+	mushroom_spawned.emit(mushroom)
 
 func _create_flagpole_3d(pos: Vector3, ts: float) -> void:
 	var area := Area3D.new()
@@ -184,8 +238,24 @@ func _on_flag_body_entered(body: Node3D) -> void:
 	if body is CharacterBody3D:
 		goal_reached.emit()
 
-func hit_block(block: StaticBody3D) -> void:
-	if not block or block.get_meta("hit", false):
+func hit_block(block: StaticBody3D, is_big: bool = false) -> void:
+	if not block:
+		return
+
+	if block.is_in_group("brick_blocks_3d"):
+		if is_big:
+			brick_shattered.emit(block.position)
+			var tween := create_tween()
+			tween.tween_property(block, "scale", Vector3.ZERO, 0.08)
+			tween.tween_callback(block.queue_free)
+		else:
+			var tween := create_tween()
+			var orig_y := block.position.y
+			tween.tween_property(block, "position:y", orig_y + 0.2, 0.06)
+			tween.tween_property(block, "position:y", orig_y, 0.06)
+		return
+
+	if not block.is_in_group("question_blocks_3d") or block.get_meta("hit", false):
 		return
 
 	block.set_meta("hit", true)
@@ -201,7 +271,14 @@ func hit_block(block: StaticBody3D) -> void:
 	tween.tween_property(block, "position:y", orig_y + 0.35, 0.08)
 	tween.tween_property(block, "position:y", orig_y, 0.08)
 
-	coin_collected.emit(col, row)
+	if block.get_meta("has_mushroom", false):
+		var mushroom := PlatformerMushroom3D.new()
+		mushroom.position = block.position + Vector3(0.0, PlatformerConfig3D.TILE_SIZE * 0.8, 0.0)
+		powerups.append(mushroom)
+		add_child(mushroom)
+		mushroom_spawned.emit(mushroom)
+	else:
+		coin_collected.emit(col, row)
 
 func _create_parallax_background_3d(level_length: float) -> void:
 	# Stylized Low-Poly Mountains at Z = -16.0 (Tiefenparallaxe durch 3D-Kamera)

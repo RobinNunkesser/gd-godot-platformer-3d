@@ -44,14 +44,18 @@ gd-platformer-godot/
 ├── scripts/
 │   ├── config.gd               # 2D Tuning-Parameter (PlatformerConfig)
 │   ├── config_3d.gd            # 3D Tuning-Parameter (PlatformerConfig3D)
-│   ├── tilemap_loader.gd       # 2D ASCII Parser & Level-Manager
-│   ├── tilemap_loader_3d.gd    # 3D PBR Extrusion & Tiefenparallaxe
-│   ├── player.gd               # 2D Kinematik & Sprung
-│   ├── player_3d.gd            # 3D Kinematik (axis_lock_linear_z = true)
+│   ├── tilemap_loader.gd       # 2D ASCII Parser & Spawner
+│   ├── tilemap_loader_3d.gd    # 3D PBR Extrusion & Spawner
+│   ├── player.gd               # 2D Kinematik, Power-Up & Schaden
+│   ├── player_3d.gd            # 3D Kinematik, Power-Up & Schaden
+│   ├── enemy.gd                # 2D Patrouillen-Gegner mit Stomp-Squash
+│   ├── enemy_3d.gd             # 3D Patrouillen-Gegner mit Stomp-Squash
+│   ├── mushroom.gd             # 2D Super-Pilz Power-Up (Wachstum)
+│   ├── mushroom_3d.gd          # 3D Super-Pilz Power-Up (Wachstum)
 │   ├── state_manager.gd        # Finite State Machine & Highscore
 │   ├── main.gd                 # 2D Game Loop mit Kampagnen-Progression
 │   └── main_3d.gd              # 3D Game Loop mit Kampagnen-Progression
-├── test_gameplay.gd            # Headless Unit- & Level-Testrunner (2D & 3D, prüft alle 5 Level)
+├── test_gameplay.gd            # Headless Unit- & Level-Testrunner (2D & 3D, prüft alle 6 Suites)
 ├── LICENSE                     # MIT License
 └── project.godot               # Godot 4 Projektkonfiguration
 ```
@@ -64,20 +68,31 @@ Das Spiel enthält eine vollwertige 5-Level-Kampagne mit fließendem Levelüberg
 
 | Level | Name | Länge | Didaktischer Fokus / Leveldesign |
 |---|---|---|---|
-| **Level 1** | *Tutorial / Plains* | 120 Spalten | Grundmechanik, Coin-Blöcke, erste Bodenlücken, flache Röhren, Pyramidentreppe zum Ziel |
-| **Level 2** | *Pipe Hills* | 125 Spalten | Gestaffelte Röhrenhöhen (Höhe 2, 3, 4), erhöhte Ziegelbrücken, vertikale Hindernisse |
-| **Level 3** | *The Chasm* | 130 Spalten | Präzise Sprünge über weite Abgründe mit Trittsteinen; fordert *Coyote Time* und *Jump Buffering* |
+| **Level 1** | *Tutorial / Plains* | 120 Spalten | Grundmechanik, Coin-Blöcke, erste Patrouillen-Gegner (`E`), Röhren, Treppe zum Ziel |
+| **Level 2** | *Pipe Hills* | 125 Spalten | Gestaffelte Röhrenhöhen (Höhe 2, 3, 4), erhöhte Ziegelbrücken, vertikale Hindernisse & Gegner |
+| **Level 3** | *The Chasm* | 130 Spalten | Weite Abgründe mit Trittsteinen; fordert *Coyote Time* und *Jump Buffering* |
 | **Level 4** | *Sky Bricks* | 135 Spalten | Luftige Höhen über bodenlosen Schluchten; Multi-Story Plattform-Parcours mit Ziegel-Highways |
-| **Level 5** | *GAN Challenge* | 140 Spalten | Rhythmisches PCGML-Muster (Procedural Content Generation) mit rhythmischen Hindernisketten |
+| **Level 5** | *GAN Challenge* | 140 Spalten | Rhythmisches PCGML-Muster mit rhythmischen Hindernis- und Gegnerketten |
 
 Der Parser verarbeitet beliebige 14-zeilige ASCII-Karten im Standardformat des **Video Game Level Corpus (VGLC)** (*Summerville et al., FDG 2016*):
 
 - `X` = Fester Boden / Pyramidenstufe
-- `S` = Ziegelblock (*Brick*)
-- `?` / `Q` = Fragezeichen- / Münzblock
+- `S` = Ziegelblock (*Brick* – von unten mit Super-Pilz zerstörbar)
+- `?` / `Q` = Fragezeichen-Block (Münze oder Super-Pilz)
 - `<>`, `[]` = Röhre (Kopf / Schaft)
+- `E` = Patrouillierender Gegner (*Goomba-Stil*, Stomp-Kollision)
+- `M` = Super-Pilz Power-Up
 - `|` / `F` = Zielflagge (*Goal*)
 - `-` = Leerraum / Luft
+
+### 🍄 Gegner & Power-Up Mechaniken
+- **Gegner (`E`):** Patrouillieren mit Gravitation und prallen an Hindernissen ab.
+  - **Stomp:** Fällt die Spielfigur von oben auf den Gegner, wird er plattgedrückt (+200 Punkte) und verleiht einen Sprung-Impuls (*Bounce*).
+  - **Seitentreffer:** Trifft der Gegner die normale Spielfigur, führt dies zum Absturz/Game-Over.
+- **Super-Pilz (`M` / aus `?`):**
+  - Verwandelt die Spielfigur in **Big Player** (+1000 Punkte).
+  - **Rüstungsschutz:** Big Player überlebt einen Gegnertreffer, schrumpft zurück und erhält 1,5 s Unverwundbarkeit mit Blinken.
+  - **Ziegel zerstören:** Nur Big Player kann Ziegelblöcke (`S`) von unten zerschlagen (+50 Punkte).
 
 Wer das Spiel gegen den akademischen Forschungsbenchmark von *Super Mario Bros.* World 1-1 testen möchte, kann die Rohdatei direkt aus dem [TheVGLC/TheVGLC](https://github.com/TheVGLC/TheVGLC) Repository in den Ordner `levels/` laden:
 

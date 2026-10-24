@@ -69,6 +69,12 @@ func add_coin() -> void:
 	coins_changed.emit(coins)
 	score_changed.emit(score)
 
+func add_score(amount: int) -> void:
+	score += amount
+	if score > highscore:
+		highscore = score
+	score_changed.emit(score)
+
 func add_progress_distance(dist_score: int) -> void:
 	if current_state == State.PLAYING:
 		if dist_score > score:

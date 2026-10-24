@@ -14,7 +14,7 @@ func _init() -> void:
 	var success := true
 
 	# Test 1: PlatformerConfig
-	print("[1/5] Testing PlatformerConfig (2D & 3D)...")
+	print("[1/6] Testing PlatformerConfig (2D & 3D)...")
 	if PlatformerConfig.TILE_SIZE <= 0 or PlatformerConfig.GRAVITY <= 0 or PlatformerConfig.JUMP_FORCE >= 0:
 		push_error("2D Config constants invalid!")
 		success = false
@@ -25,7 +25,7 @@ func _init() -> void:
 		print("  -> Config constants OK.")
 
 	# Test 2: PlatformerStateManager
-	print("[2/5] Testing PlatformerStateManager...")
+	print("[2/6] Testing PlatformerStateManager...")
 	var sm = PlatformerStateManager.new()
 	sm.reset()
 	if sm.get_state_string() != "READY":
@@ -46,7 +46,7 @@ func _init() -> void:
 	print("  -> StateManager OK.")
 
 	# Test 3: TileMapLoader 2D (All 5 Curated Levels)
-	print("[3/5] Testing TileMapLoader (2D) on all 5 curated levels...")
+	print("[3/6] Testing TileMapLoader (2D) on all 5 curated levels...")
 	var loader = TileMapLoader.new()
 	root.add_child(loader)
 	for i in range(1, 6):
@@ -56,11 +56,11 @@ func _init() -> void:
 			push_error("2D Loader failed on " + path)
 			success = false
 		else:
-			print("  -> Level %d parsed: %d rows x %d cols OK." % [i, loader.level_height_rows, loader.level_width_cols])
+			print("  -> Level %d parsed: %d rows x %d cols (%d enemies) OK." % [i, loader.level_height_rows, loader.level_width_cols, loader.enemies.size()])
 	loader.queue_free()
 
 	# Test 4: Player 2D Kinematics
-	print("[4/5] Testing Player 2D Kinematics...")
+	print("[4/6] Testing Player 2D Kinematics...")
 	var player_scene = preload("res://scenes/player.tscn")
 	var player = player_scene.instantiate()
 	root.add_child(player)
@@ -77,7 +77,7 @@ func _init() -> void:
 	player.queue_free()
 
 	# Test 5: TileMapLoader 3D & Player 3D (All 5 Curated Levels)
-	print("[5/5] Testing 3D Pipeline (TileMapLoader3D & Player3D on 5 levels)...")
+	print("[5/6] Testing 3D Pipeline (TileMapLoader3D & Player3D on 5 levels)...")
 	var loader3d = TileMapLoader3D.new()
 	root.add_child(loader3d)
 	for i in range(1, 6):
@@ -87,11 +87,12 @@ func _init() -> void:
 			push_error("3D Loader failed on " + path)
 			success = false
 		else:
-			print("  -> Level %d 3D parsed: %d rows x %d cols (%d question blocks) OK." % [
+			print("  -> Level %d 3D parsed: %d rows x %d cols (%d question blocks, %d enemies) OK." % [
 				i,
 				loader3d.level_height_rows,
 				loader3d.level_width_cols,
-				loader3d.question_blocks.size()
+				loader3d.question_blocks.size(),
+				loader3d.enemies.size()
 			])
 	loader3d.queue_free()
 
@@ -108,6 +109,59 @@ func _init() -> void:
 		success = false
 	else:
 		print("  -> Player 3D kinematics OK (velocity.y = %f)." % player3d.velocity.y)
+
+	# Test 6: Enemies & Power-Ups (2D & 3D)
+	print("[6/6] Testing Enemies & Power-Ups (2D & 3D)...")
+	var player2d_inst = player_scene.instantiate()
+	root.add_child(player2d_inst)
+	player2d_inst.reset_position()
+
+	# Test 6a: Power-Up
+	player2d_inst.power_up()
+	if not player2d_inst.is_big:
+		push_error("Player did not grow big after power_up()!")
+		success = false
+	else:
+		print("  -> 2D Power-up growth OK.")
+
+	# Test 6b: Taking damage when big
+	var killed = player2d_inst.take_damage()
+	if killed or player2d_inst.is_big or not player2d_inst.is_invulnerable:
+		push_error("Taking damage when big should shrink player and grant invulnerability without dying!")
+		success = false
+	else:
+		print("  -> 2D Big Player armor/shrink on damage OK.")
+
+	# Test 6c: Taking damage when small
+	player2d_inst.is_invulnerable = false
+	var small_killed = player2d_inst.take_damage()
+	if not small_killed:
+		push_error("Small player should be killed on damage!")
+		success = false
+	else:
+		print("  -> 2D Small Player death on damage OK.")
+
+	# Test 6d: Enemy Stomp Bounce
+	player2d_inst.bounce_after_stomp()
+	if player2d_inst.velocity.y >= 0:
+		push_error("bounce_after_stomp failed to apply upward velocity!")
+		success = false
+	else:
+		print("  -> 2D Stomp bounce impulse OK.")
+
+	# Test 6e: 3D Power-Up & Damage
+	player3d.power_up()
+	if not player3d.is_big:
+		push_error("Player 3D did not grow big!")
+		success = false
+	var p3d_killed = player3d.take_damage()
+	if p3d_killed or player3d.is_big:
+		push_error("Player 3D armor failed!")
+		success = false
+	else:
+		print("  -> 3D Power-up and armor OK.")
+
+	player2d_inst.queue_free()
 	player3d.queue_free()
 
 	if success:

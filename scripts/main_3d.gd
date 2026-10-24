@@ -44,6 +44,9 @@ func _ready() -> void:
 
 	tilemap_loader.coin_collected.connect(_on_coin_collected)
 	tilemap_loader.goal_reached.connect(_on_goal_reached)
+	tilemap_loader.enemy_spawned.connect(_on_enemy_spawned)
+	tilemap_loader.mushroom_spawned.connect(_on_mushroom_spawned)
+	tilemap_loader.brick_shattered.connect(_on_brick_shattered)
 	player.block_hit_from_below.connect(_on_block_hit)
 
 	load_level(0)
@@ -57,7 +60,7 @@ func load_level(index: int) -> void:
 	tilemap_loader.load_level_from_file(path)
 	player.reset_position()
 	camera.position.x = PlatformerConfig3D.START_X + 4.0
-	camera.position.y = PlatformerConfig3D.CAMERA_Y
+	camera.position.y = PlatformerConfig3D.CAMERA_HEIGHT_OFFSET
 	_update_hud()
 
 func _bind_ui_buttons() -> void:
@@ -79,6 +82,15 @@ func _process(delta: float) -> void:
 		var in_jump_held := Input.is_action_pressed("jump")
 
 		player.update_kinematics(delta, in_left, in_right, in_jump_pressed, in_jump_held)
+
+		# 3D Gegner & Pilze aktualisieren
+		for enemy in tilemap_loader.enemies:
+			if is_instance_valid(enemy):
+				enemy.update_enemy(delta)
+
+		for powerup in tilemap_loader.powerups:
+			if is_instance_valid(powerup):
+				powerup.update_mushroom(delta)
 
 		# Fortschrittspunkte (Distanz nach rechts)
 		var dist_score := int(player.position.x * 10.0)
@@ -118,8 +130,21 @@ func on_victory_action() -> void:
 		load_level(current_level_index)
 		restart_game()
 
-func _on_block_hit(block: StaticBody3D) -> void:
-	tilemap_loader.hit_block(block)
+func _on_enemy_spawned(enemy: Node) -> void:
+	if enemy.has_signal("stomped"):
+		enemy.connect("stomped", func(_e): state_manager.add_score(200))
+	if enemy.has_signal("player_hurt"):
+		enemy.connect("player_hurt", func(killed: bool): if killed: state_manager.fall())
+
+func _on_mushroom_spawned(mushroom: Node) -> void:
+	if mushroom.has_signal("collected"):
+		mushroom.connect("collected", func(_m): state_manager.add_score(1000))
+
+func _on_brick_shattered(_pos: Vector3) -> void:
+	state_manager.add_score(50)
+
+func _on_block_hit(block: StaticBody3D, is_big: bool = false) -> void:
+	tilemap_loader.hit_block(block, is_big)
 
 func _on_coin_collected(_col: int, _row: int) -> void:
 	state_manager.add_coin()
