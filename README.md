@@ -1,7 +1,6 @@
-# 🎮 gd-platformer-godot (Retro Tile-Platformer in Godot 4)
+# 🎮 gd-godot-platformer-3d (Retro 2.5D Platformer in Godot 4)
 
-> **Didaktisches 2D/2.5D-Tile-Platformer-Gegenstück** zur Vorlesung *Interaktive Grafikanwendungen (IGA)*  
-> Duale Implementierung (Target 1: Godot 4 Native 2D / 2.5D) basierend auf demselben **Micro-GDD** wie [`ts-babylonjs-platformer`](https://github.com/RobinNunkesser/ts-platformer-babylonjs).
+> **Plastischer 2.5D-Retro-Platformer in Godot 4** mit vollständiger VGLC-Gegnersuite, gestufter Power-Up-Progression (Super-Pilz, Feuerblume, Super-Stern) und PBR-Rendering mit Licht & Schatten.
 
 ---
 
