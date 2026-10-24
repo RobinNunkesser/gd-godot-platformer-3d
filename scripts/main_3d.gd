@@ -5,6 +5,7 @@ const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 const PlatformerStateManager = preload("res://scripts/state_manager.gd")
 const TileMapLoader3D = preload("res://scripts/tilemap_loader_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
+const PlatformerFireball3D = preload("res://scripts/fireball_3d.gd")
 
 @onready var tilemap_loader: TileMapLoader3D = $TileMapLoader3D
 @onready var player: PlatformerPlayer3D = $Player3D
@@ -45,9 +46,10 @@ func _ready() -> void:
 	tilemap_loader.coin_collected.connect(_on_coin_collected)
 	tilemap_loader.goal_reached.connect(_on_goal_reached)
 	tilemap_loader.enemy_spawned.connect(_on_enemy_spawned)
-	tilemap_loader.mushroom_spawned.connect(_on_mushroom_spawned)
+	tilemap_loader.powerup_spawned.connect(_on_powerup_spawned)
 	tilemap_loader.brick_shattered.connect(_on_brick_shattered)
 	player.block_hit_from_below.connect(_on_block_hit)
+	player.fireball_requested.connect(_on_fireball_requested)
 
 	load_level(0)
 	_bind_ui_buttons()
@@ -61,6 +63,12 @@ func load_level(index: int) -> void:
 	player.reset_position()
 	camera.position.x = PlatformerConfig3D.START_X + 4.0
 	camera.position.y = PlatformerConfig3D.CAMERA_HEIGHT_OFFSET
+
+	# 3D Kanonen verbinden
+	for cannon in tilemap_loader.cannons:
+		if not cannon.bullet_fired.is_connected(_on_cannon_bullet_fired):
+			cannon.bullet_fired.connect(_on_cannon_bullet_fired)
+
 	_update_hud()
 
 func _bind_ui_buttons() -> void:
@@ -80,17 +88,33 @@ func _process(delta: float) -> void:
 		var in_right := Input.is_action_pressed("move_right")
 		var in_jump_pressed := Input.is_action_just_pressed("jump")
 		var in_jump_held := Input.is_action_pressed("jump")
+		var in_shoot := Input.is_action_just_pressed("shoot")
 
-		player.update_kinematics(delta, in_left, in_right, in_jump_pressed, in_jump_held)
+		player.update_kinematics(delta, in_left, in_right, in_jump_pressed, in_jump_held, in_shoot)
 
-		# 3D Gegner & Pilze aktualisieren
+		# Kanonen aktualisieren
+		for cannon in tilemap_loader.cannons:
+			if is_instance_valid(cannon):
+				cannon.update_cannon(delta, player)
+
+		# 3D Gegner aktualisieren
 		for enemy in tilemap_loader.enemies:
 			if is_instance_valid(enemy):
-				enemy.update_enemy(delta)
+				if enemy.has_method("update_enemy"):
+					enemy.update_enemy(delta, player)
 
+		# 3D Feuerbälle aktualisieren
+		for fb in get_tree().get_nodes_in_group("fireballs_3d"):
+			if is_instance_valid(fb) and fb.has_method("update_fireball"):
+				fb.update_fireball(delta)
+
+		# 3D Power-Ups aktualisieren
 		for powerup in tilemap_loader.powerups:
 			if is_instance_valid(powerup):
-				powerup.update_mushroom(delta)
+				if powerup.has_method("update_mushroom"):
+					powerup.update_mushroom(delta)
+				elif powerup.has_method("update_star"):
+					powerup.update_star(delta)
 
 		# Fortschrittspunkte (Distanz nach rechts)
 		var dist_score := int(player.position.x * 10.0)
@@ -136,9 +160,21 @@ func _on_enemy_spawned(enemy: Node) -> void:
 	if enemy.has_signal("player_hurt"):
 		enemy.connect("player_hurt", func(killed: bool): if killed: state_manager.fall())
 
-func _on_mushroom_spawned(mushroom: Node) -> void:
-	if mushroom.has_signal("collected"):
-		mushroom.connect("collected", func(_m): state_manager.add_score(1000))
+func _on_powerup_spawned(powerup: Node) -> void:
+	if powerup.has_signal("collected"):
+		powerup.connect("collected", func(_p): state_manager.add_score(1000))
+
+func _on_fireball_requested(pos: Vector3, dir: float) -> void:
+	var fb := PlatformerFireball3D.new()
+	fb.position = pos
+	fb.direction = dir
+	fb.hit_enemy.connect(func(_e): state_manager.add_score(200))
+	tilemap_loader.add_child(fb)
+
+func _on_cannon_bullet_fired(bullet: Node3D) -> void:
+	tilemap_loader.enemies.append(bullet)
+	tilemap_loader.add_child(bullet)
+	_on_enemy_spawned(bullet)
 
 func _on_brick_shattered(_pos: Vector3) -> void:
 	state_manager.add_score(50)

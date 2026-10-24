@@ -9,6 +9,18 @@ const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 const TileMapLoader3D = preload("res://scripts/tilemap_loader_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
 
+const PlatformerKoopa = preload("res://scripts/enemy_koopa.gd")
+const PlatformerBulletBill = preload("res://scripts/bullet_bill.gd")
+const PlatformerCannon = preload("res://scripts/cannon.gd")
+const PlatformerPiranhaPlant = preload("res://scripts/piranha_plant.gd")
+const PlatformerFireball = preload("res://scripts/fireball.gd")
+
+const PlatformerKoopa3D = preload("res://scripts/enemy_koopa_3d.gd")
+const PlatformerBulletBill3D = preload("res://scripts/bullet_bill_3d.gd")
+const PlatformerCannon3D = preload("res://scripts/cannon_3d.gd")
+const PlatformerPiranhaPlant3D = preload("res://scripts/piranha_plant_3d.gd")
+const PlatformerFireball3D = preload("res://scripts/fireball_3d.gd")
+
 func _init() -> void:
 	print("--- Running Headless Godot 4 Unit & Gameplay Tests (2D & 3D) ---")
 	var success := true
@@ -160,6 +172,106 @@ func _init() -> void:
 		success = false
 	else:
 		print("  -> 3D Power-up and armor OK.")
+
+	# Test 6f: Fire Flower Power-up & Fireball Shooting (2D)
+	player2d_inst.power_up_flower()
+	if not player2d_inst.is_fire or not player2d_inst.is_big:
+		push_error("Player did not become FIRE state after power_up_flower()!")
+		success = false
+	var shot_fired := [false]
+	var fireball_cb = func(_pos: Vector2, _dir: float):
+		shot_fired[0] = true
+	player2d_inst.fireball_requested.connect(fireball_cb)
+	player2d_inst.shoot()
+	if not shot_fired[0]:
+		push_error("Player 2D shoot() failed to emit fireball_requested!")
+		success = false
+	else:
+		print("  -> 2D Fire Flower & Fireball shooting OK.")
+
+	# Test 6g: Super Star (Starman) Invincibility (2D)
+	player2d_inst.power_up_star(10.0)
+	if not player2d_inst.is_starman or player2d_inst.star_timer <= 0:
+		push_error("Player 2D did not enter Starman mode!")
+		success = false
+	var dmg_blocked = player2d_inst.take_damage()
+	if dmg_blocked or not player2d_inst.is_fire:
+		push_error("Starman should be impervious to damage without losing Fire state!")
+		success = false
+	else:
+		print("  -> 2D Super Star invincibility OK.")
+
+	# Test 6h: Koopa Troopa Stomp & Shell Kick (2D)
+	var koopa = PlatformerKoopa.new()
+	root.add_child(koopa)
+	if koopa.current_state != PlatformerKoopa.State.WALKING:
+		push_error("Koopa did not start in WALKING state!")
+		success = false
+	koopa.take_stomp(player2d_inst)
+	if koopa.current_state != PlatformerKoopa.State.SHELL_IDLE:
+		push_error("Koopa stomp failed to enter SHELL_IDLE state!")
+		success = false
+	koopa.kick_shell(player2d_inst)
+	if koopa.current_state != PlatformerKoopa.State.SHELL_SLIDING:
+		push_error("Koopa kick failed to enter SHELL_SLIDING state!")
+		success = false
+	else:
+		print("  -> 2D Koopa Troopa stomp & shell sliding OK.")
+	koopa.queue_free()
+
+	# Test 6i: Cannon & Bullet Bill Launch & Stomp (2D)
+	var cannon = PlatformerCannon.new()
+	cannon.is_top = true
+	cannon.position = Vector2(200.0, 500.0)
+	player2d_inst.position = Vector2(350.0, 500.0)
+	root.add_child(cannon)
+	cannon.fire_timer = 0.05
+	var bb_fired := [false]
+	cannon.bullet_fired.connect(func(_bb): bb_fired[0] = true)
+	cannon.update_cannon(0.1, player2d_inst)
+	if not bb_fired[0]:
+		push_error("PlatformerCannon failed to fire Bullet Bill!")
+		success = false
+	var bullet = PlatformerBulletBill.new()
+	root.add_child(bullet)
+	bullet.take_stomp(player2d_inst)
+	if not bullet.is_dead:
+		push_error("Bullet Bill stomp failed to defeat bullet!")
+		success = false
+	else:
+		print("  -> 2D Cannon & Bullet Bill mechanics OK.")
+	cannon.queue_free()
+	bullet.queue_free()
+
+	# Test 6j: Piranha Plant Defeat (2D)
+	var piranha = PlatformerPiranhaPlant.new()
+	root.add_child(piranha)
+	piranha.take_fireball()
+	if not piranha.is_dead:
+		push_error("Piranha plant failed to die from fireball!")
+		success = false
+	else:
+		print("  -> 2D Piranha Plant mechanics OK.")
+	piranha.queue_free()
+
+	# Test 6k: 3D Fire Flower, Starman & Koopa 3D
+	player3d.power_up_flower()
+	if not player3d.is_fire or not player3d.is_big:
+		push_error("Player 3D did not become FIRE state!")
+		success = false
+	player3d.power_up_star(10.0)
+	if not player3d.is_starman:
+		push_error("Player 3D Starman failed!")
+		success = false
+	var koopa3d = PlatformerKoopa3D.new()
+	root.add_child(koopa3d)
+	koopa3d.take_stomp(player3d)
+	if koopa3d.current_state != PlatformerKoopa3D.State.SHELL_IDLE:
+		push_error("Koopa 3D stomp failed to enter SHELL_IDLE!")
+		success = false
+	else:
+		print("  -> 3D Fire Flower, Starman, and Koopa 3D OK.")
+	koopa3d.queue_free()
 
 	player2d_inst.queue_free()
 	player3d.queue_free()

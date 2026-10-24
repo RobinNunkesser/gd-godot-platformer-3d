@@ -1,0 +1,168 @@
+class_name PlatformerKoopa3D
+extends CharacterBody3D
+
+const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
+const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
+
+signal stomped(enemy: Node3D)
+signal player_hurt(killed: bool)
+
+enum State { WALKING, SHELL_IDLE, SHELL_SLIDING }
+var current_state: State = State.WALKING
+
+@export var walk_speed: float = 1.6
+@export var slide_speed: float = 11.0
+var direction: float = -1.0
+
+var visual_head: MeshInstance3D
+var visual_shell: MeshInstance3D
+
+func _ready() -> void:
+	axis_lock_linear_z = true
+	add_to_group("enemies_3d")
+	_build_components()
+
+func _build_components() -> void:
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.75, 0.85, 0.75)
+	shape.shape = box
+	add_child(shape)
+
+	var visual := Node3D.new()
+	visual.name = "Visual"
+
+	var mat_shell := StandardMaterial3D.new()
+	mat_shell.albedo_color = Color("#16a34a")
+	mat_shell.roughness = 0.5
+
+	visual_shell = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.38
+	sphere.height = 0.6
+	sphere.material = mat_shell
+	visual_shell.mesh = sphere
+	visual.add_child(visual_shell)
+
+	var mat_head := StandardMaterial3D.new()
+	mat_head.albedo_color = Color("#84cc16")
+
+	visual_head = MeshInstance3D.new()
+	var head_sphere := SphereMesh.new()
+	head_sphere.radius = 0.18
+	head_sphere.height = 0.3
+	head_sphere.material = mat_head
+	visual_head.mesh = head_sphere
+	visual_head.position = Vector3(0.0, 0.35, 0.2)
+	visual.add_child(visual_head)
+
+	add_child(visual)
+
+	var area := Area3D.new()
+	area.name = "Hitbox3D"
+	var area_shape := CollisionShape3D.new()
+	var area_box := BoxShape3D.new()
+	area_box.size = Vector3(0.85, 0.9, 0.85)
+	area_shape.shape = area_box
+	area.add_child(area_shape)
+	area.body_entered.connect(_on_body_entered)
+	add_child(area)
+
+func update_enemy(delta: float) -> void:
+	velocity.y -= PlatformerConfig3D.GRAVITY * delta
+	velocity.z = 0.0
+
+	match current_state:
+		State.WALKING:
+			velocity.x = walk_speed * direction
+		State.SHELL_IDLE:
+			velocity.x = 0.0
+		State.SHELL_SLIDING:
+			velocity.x = slide_speed * direction
+
+	if is_inside_tree() and get_world_3d() and get_world_3d().space.is_valid():
+		move_and_slide()
+		if is_on_wall():
+			direction *= -1.0
+	else:
+		position += velocity * delta
+
+	if position.y < PlatformerConfig3D.DEATH_Y:
+		queue_free()
+
+func _on_body_entered(body: Node3D) -> void:
+	if not is_instance_valid(body):
+		return
+
+	if current_state == State.SHELL_SLIDING and body.is_in_group("enemies_3d") and body != self:
+		if body.has_method("die_from_fireball"):
+			body.die_from_fireball()
+		elif body.has_signal("stomped"):
+			body.stomped.emit(body)
+			body.queue_free()
+		return
+
+	if not (body is PlatformerPlayer3D):
+		return
+
+	var player := body as PlatformerPlayer3D
+
+	if player.is_starman:
+		die_from_fireball()
+		return
+
+	# In 3D: Sprung von oben = velocity.y < 0.0
+	var is_falling_on_top: bool = player.velocity.y < 0.0 and player.global_position.y > global_position.y + 0.2
+
+	match current_state:
+		State.WALKING:
+			if is_falling_on_top:
+				current_state = State.SHELL_IDLE
+				visual_head.visible = false
+				player.bounce_after_stomp()
+				stomped.emit(self)
+			else:
+				var killed := player.take_damage()
+				player_hurt.emit(killed)
+
+		State.SHELL_IDLE:
+			kick_shell(player)
+			if is_falling_on_top:
+				player.bounce_after_stomp()
+
+		State.SHELL_SLIDING:
+			if is_falling_on_top:
+				current_state = State.SHELL_IDLE
+				player.bounce_after_stomp()
+			else:
+				var killed := player.take_damage()
+				player_hurt.emit(killed)
+
+func kick_shell(player: PlatformerPlayer3D) -> void:
+	current_state = State.SHELL_SLIDING
+	direction = 1.0 if player.global_position.x < global_position.x else -1.0
+	position.x += direction * 0.25
+
+func die_from_fireball() -> void:
+	stomped.emit(self)
+	var tween := create_tween()
+	if tween:
+		tween.tween_property(self, "scale:y", 0.1, 0.08)
+		tween.tween_callback(queue_free)
+	else:
+		queue_free()
+
+func take_stomp(player: PlatformerPlayer3D) -> void:
+	match current_state:
+		State.WALKING:
+			current_state = State.SHELL_IDLE
+			if visual_head:
+				visual_head.visible = false
+			player.bounce_after_stomp()
+			stomped.emit(self)
+		State.SHELL_IDLE:
+			kick_shell(player)
+			player.bounce_after_stomp()
+		State.SHELL_SLIDING:
+			current_state = State.SHELL_IDLE
+			player.bounce_after_stomp()

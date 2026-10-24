@@ -4,11 +4,19 @@ extends Node3D
 const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 
 const PlatformerEnemy3D = preload("res://scripts/enemy_3d.gd")
+const PlatformerKoopa3D = preload("res://scripts/enemy_koopa_3d.gd")
+const PlatformerBulletBill3D = preload("res://scripts/bullet_bill_3d.gd")
+const PlatformerCannon3D = preload("res://scripts/cannon_3d.gd")
+const PlatformerPiranhaPlant3D = preload("res://scripts/piranha_plant_3d.gd")
+
 const PlatformerMushroom3D = preload("res://scripts/mushroom_3d.gd")
+const PlatformerFlower3D = preload("res://scripts/flower_3d.gd")
+const PlatformerStar3D = preload("res://scripts/star_3d.gd")
 
 signal coin_collected(col: int, row: int)
 signal goal_reached
-signal enemy_spawned(enemy: PlatformerEnemy3D)
+signal enemy_spawned(enemy: Node3D)
+signal powerup_spawned(powerup: Node3D)
 signal mushroom_spawned(mushroom: PlatformerMushroom3D)
 signal brick_shattered(pos: Vector3)
 
@@ -16,8 +24,9 @@ var level_width_cols: int = 0
 var level_height_rows: int = 0
 var flagpole_col: int = 198
 var question_blocks: Dictionary = {}
-var enemies: Array[PlatformerEnemy3D] = []
-var powerups: Array[PlatformerMushroom3D] = []
+var enemies: Array[Node3D] = []
+var powerups: Array[Node3D] = []
+var cannons: Array[PlatformerCannon3D] = []
 
 var mat_ground: StandardMaterial3D
 var mat_brick: StandardMaterial3D
@@ -25,6 +34,7 @@ var mat_question: StandardMaterial3D
 var mat_spent: StandardMaterial3D
 var mat_pipe: StandardMaterial3D
 var mat_flag: StandardMaterial3D
+var mat_coin: StandardMaterial3D
 
 func _init() -> void:
 	_setup_materials()
@@ -65,6 +75,7 @@ func clear() -> void:
 	question_blocks.clear()
 	enemies.clear()
 	powerups.clear()
+	cannons.clear()
 	level_width_cols = 0
 	level_height_rows = 0
 
@@ -119,8 +130,22 @@ func _create_tile_3d(char: String, col: int, row: int, pos: Vector3, ts: float) 
 			_create_solid_cube_3d(pos, ts, mat_pipe, "Pipe", 1.2)
 		"E":
 			_create_enemy_3d(pos, ts)
+		"K", "k":
+			_create_koopa_3d(pos, ts)
+		"B":
+			_create_cannon_3d(pos, ts, true)
+		"b":
+			_create_cannon_3d(pos, ts, false)
+		"P", "y":
+			_create_piranha_3d(pos, ts)
 		"M":
 			_create_mushroom_3d(pos, ts)
+		"f":
+			_create_flower_3d(pos, ts)
+		"*":
+			_create_star_3d(pos, ts)
+		"o":
+			_create_coin_3d(pos, ts, col, row)
 		"F", "|":
 			flagpole_col = col
 			_create_flagpole_3d(pos, ts)
@@ -204,12 +229,81 @@ func _create_enemy_3d(pos: Vector3, ts: float) -> void:
 	add_child(enemy)
 	enemy_spawned.emit(enemy)
 
+func _create_koopa_3d(pos: Vector3, ts: float) -> void:
+	var koopa := PlatformerKoopa3D.new()
+	koopa.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	enemies.append(koopa)
+	add_child(koopa)
+	enemy_spawned.emit(koopa)
+
+func _create_cannon_3d(pos: Vector3, ts: float, is_top: bool) -> void:
+	var cannon := PlatformerCannon3D.new()
+	cannon.is_top = is_top
+	cannon.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	cannons.append(cannon)
+	add_child(cannon)
+
+func _create_piranha_3d(pos: Vector3, ts: float) -> void:
+	var piranha := PlatformerPiranhaPlant3D.new()
+	piranha.position = pos + Vector3(ts / 2.0, 0.0, 0.0)
+	enemies.append(piranha)
+	add_child(piranha)
+	enemy_spawned.emit(piranha)
+
 func _create_mushroom_3d(pos: Vector3, ts: float) -> void:
 	var mushroom := PlatformerMushroom3D.new()
 	mushroom.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
 	powerups.append(mushroom)
 	add_child(mushroom)
-	mushroom_spawned.emit(mushroom)
+	powerup_spawned.emit(mushroom)
+
+func _create_flower_3d(pos: Vector3, ts: float) -> void:
+	var flower := PlatformerFlower3D.new()
+	flower.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	powerups.append(flower)
+	add_child(flower)
+	powerup_spawned.emit(flower)
+
+func _create_star_3d(pos: Vector3, ts: float) -> void:
+	var star := PlatformerStar3D.new()
+	star.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+	powerups.append(star)
+	add_child(star)
+	powerup_spawned.emit(star)
+
+func _create_coin_3d(pos: Vector3, ts: float, col: int, row: int) -> void:
+	var area := Area3D.new()
+	area.name = "Coin3D_%d_%d" % [col, row]
+	area.position = pos + Vector3(ts / 2.0, ts / 2.0, 0.0)
+
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = ts * 0.3
+	shape.shape = sphere
+	area.add_child(shape)
+
+	var mesh_inst := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = ts * 0.3
+	cyl.bottom_radius = ts * 0.3
+	cyl.height = 0.1
+	cyl.radial_segments = 16
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("#fbbf24")
+	mat.metallic = 0.7
+	mat.roughness = 0.3
+	cyl.material = mat
+	mesh_inst.mesh = cyl
+	mesh_inst.rotation.x = PI / 2.0
+	area.add_child(mesh_inst)
+
+	area.body_entered.connect(func(body: Node3D):
+		if body.is_in_group("player_3d"):
+			coin_collected.emit(col, row)
+			area.queue_free()
+	)
+	add_child(area)
 
 func _create_flagpole_3d(pos: Vector3, ts: float) -> void:
 	var area := Area3D.new()
@@ -271,12 +365,26 @@ func hit_block(block: StaticBody3D, is_big: bool = false) -> void:
 	tween.tween_property(block, "position:y", orig_y + 0.35, 0.08)
 	tween.tween_property(block, "position:y", orig_y, 0.08)
 
-	if block.get_meta("has_mushroom", false):
-		var mushroom := PlatformerMushroom3D.new()
-		mushroom.position = block.position + Vector3(0.0, PlatformerConfig3D.TILE_SIZE * 0.8, 0.0)
-		powerups.append(mushroom)
-		add_child(mushroom)
-		mushroom_spawned.emit(mushroom)
+	var has_powerup: bool = (question_blocks.size() == 1 or col % 4 == 0)
+	if has_powerup:
+		if col % 8 == 0:
+			var star := PlatformerStar3D.new()
+			star.position = block.position + Vector3(0.0, PlatformerConfig3D.TILE_SIZE * 0.8, 0.0)
+			powerups.append(star)
+			add_child(star)
+			powerup_spawned.emit(star)
+		elif is_big:
+			var flower := PlatformerFlower3D.new()
+			flower.position = block.position + Vector3(0.0, PlatformerConfig3D.TILE_SIZE * 0.8, 0.0)
+			powerups.append(flower)
+			add_child(flower)
+			powerup_spawned.emit(flower)
+		else:
+			var mushroom := PlatformerMushroom3D.new()
+			mushroom.position = block.position + Vector3(0.0, PlatformerConfig3D.TILE_SIZE * 0.8, 0.0)
+			powerups.append(mushroom)
+			add_child(mushroom)
+			powerup_spawned.emit(mushroom)
 	else:
 		coin_collected.emit(col, row)
 

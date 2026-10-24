@@ -2,13 +2,20 @@ class_name TileMapLoader
 extends Node2D
 
 const PlatformerConfig = preload("res://scripts/config.gd")
-
 const PlatformerEnemy = preload("res://scripts/enemy.gd")
+const PlatformerKoopa = preload("res://scripts/enemy_koopa.gd")
+const PlatformerBulletBill = preload("res://scripts/bullet_bill.gd")
+const PlatformerCannon = preload("res://scripts/cannon.gd")
+const PlatformerPiranhaPlant = preload("res://scripts/piranha_plant.gd")
+
 const PlatformerMushroom = preload("res://scripts/mushroom.gd")
+const PlatformerFlower = preload("res://scripts/flower.gd")
+const PlatformerStar = preload("res://scripts/star.gd")
 
 signal coin_collected(col: int, row: int)
 signal goal_reached
-signal enemy_spawned(enemy: PlatformerEnemy)
+signal enemy_spawned(enemy: Node2D)
+signal powerup_spawned(powerup: Node2D)
 signal mushroom_spawned(mushroom: PlatformerMushroom)
 signal brick_shattered(pos: Vector2)
 
@@ -16,8 +23,9 @@ var level_width_cols: int = 0
 var level_height_rows: int = 0
 var flagpole_col: int = 198
 var question_blocks: Dictionary = {}
-var enemies: Array[PlatformerEnemy] = []
-var powerups: Array[PlatformerMushroom] = []
+var enemies: Array[Node2D] = []
+var powerups: Array[Node2D] = []
+var cannons: Array[PlatformerCannon] = []
 
 func clear() -> void:
 	for child in get_children():
@@ -25,6 +33,7 @@ func clear() -> void:
 	question_blocks.clear()
 	enemies.clear()
 	powerups.clear()
+	cannons.clear()
 	level_width_cols = 0
 	level_height_rows = 0
 
@@ -75,8 +84,22 @@ func _create_tile(char: String, col: int, row: int, pos: Vector2, ts: float) -> 
 			_create_solid_block(pos, ts, Color("#10b981"), "Pipe")
 		"E":
 			_create_enemy(pos, ts)
+		"K", "k":
+			_create_koopa(pos, ts)
+		"B":
+			_create_cannon(pos, ts, true)
+		"b":
+			_create_cannon(pos, ts, false)
+		"P", "y":
+			_create_piranha(pos, ts)
 		"M":
 			_create_mushroom(pos, ts)
+		"f":
+			_create_flower(pos, ts)
+		"*":
+			_create_star(pos, ts)
+		"o":
+			_create_coin(pos, ts, col, row)
 		"F", "|":
 			flagpole_col = col
 			_create_flagpole(pos, ts)
@@ -151,6 +174,7 @@ func _create_question_block(pos: Vector2, ts: float, col: int, row: int) -> void
 	question_blocks[Vector2i(col, row)] = body
 	add_child(body)
 
+
 func _create_enemy(pos: Vector2, ts: float) -> void:
 	var enemy := PlatformerEnemy.new()
 	enemy.position = pos + Vector2(ts / 2.0, ts / 2.0)
@@ -158,12 +182,71 @@ func _create_enemy(pos: Vector2, ts: float) -> void:
 	add_child(enemy)
 	enemy_spawned.emit(enemy)
 
+func _create_koopa(pos: Vector2, ts: float) -> void:
+	var koopa := PlatformerKoopa.new()
+	koopa.position = pos + Vector2(ts / 2.0, ts / 2.0)
+	enemies.append(koopa)
+	add_child(koopa)
+	enemy_spawned.emit(koopa)
+
+func _create_cannon(pos: Vector2, ts: float, is_top: bool) -> void:
+	var cannon := PlatformerCannon.new()
+	cannon.is_top = is_top
+	cannon.position = pos + Vector2(ts / 2.0, ts / 2.0)
+	cannons.append(cannon)
+	add_child(cannon)
+
+func _create_piranha(pos: Vector2, ts: float) -> void:
+	var piranha := PlatformerPiranhaPlant.new()
+	piranha.position = pos + Vector2(ts / 2.0, ts)
+	enemies.append(piranha)
+	add_child(piranha)
+	enemy_spawned.emit(piranha)
+
 func _create_mushroom(pos: Vector2, ts: float) -> void:
 	var mushroom := PlatformerMushroom.new()
 	mushroom.position = pos + Vector2(ts / 2.0, ts / 2.0)
 	powerups.append(mushroom)
 	add_child(mushroom)
-	mushroom_spawned.emit(mushroom)
+	powerup_spawned.emit(mushroom)
+
+func _create_flower(pos: Vector2, ts: float) -> void:
+	var flower := PlatformerFlower.new()
+	flower.position = pos + Vector2(ts / 2.0, ts / 2.0)
+	powerups.append(flower)
+	add_child(flower)
+	powerup_spawned.emit(flower)
+
+func _create_star(pos: Vector2, ts: float) -> void:
+	var star := PlatformerStar.new()
+	star.position = pos + Vector2(ts / 2.0, ts / 2.0)
+	powerups.append(star)
+	add_child(star)
+	powerup_spawned.emit(star)
+
+func _create_coin(pos: Vector2, ts: float, col: int, row: int) -> void:
+	var area := Area2D.new()
+	area.name = "Coin_%d_%d" % [col, row]
+	area.position = pos + Vector2(ts / 2.0, ts / 2.0)
+
+	var shape := CollisionShape2D.new()
+	var circle := CircleShape2D.new()
+	circle.radius = ts * 0.3
+	shape.shape = circle
+	area.add_child(shape)
+
+	var visual := ColorRect.new()
+	visual.color = Color("#fbbf24") # Warmes Gold
+	visual.size = Vector2(ts * 0.45, ts * 0.6)
+	visual.position = Vector2(-ts * 0.225, -ts * 0.3)
+	area.add_child(visual)
+
+	area.body_entered.connect(func(body: Node2D):
+		if body.is_in_group("player"):
+			coin_collected.emit(col, row)
+			area.queue_free()
+	)
+	add_child(area)
 
 func _create_flagpole(pos: Vector2, ts: float) -> void:
 	var area := Area2D.new()
@@ -225,12 +308,28 @@ func hit_block(block: StaticBody2D, is_big: bool = false) -> void:
 	tween.tween_property(block, "position:y", orig_y - 10.0, 0.08)
 	tween.tween_property(block, "position:y", orig_y, 0.08)
 
-	if block.get_meta("has_mushroom", false):
-		# Pilz steigt aus dem Block auf
-		var mushroom := PlatformerMushroom.new()
-		mushroom.position = block.position - Vector2(0.0, PlatformerConfig.TILE_SIZE * 0.8)
-		powerups.append(mushroom)
-		add_child(mushroom)
-		mushroom_spawned.emit(mushroom)
+	var has_powerup: bool = (question_blocks.size() == 1 or col % 4 == 0)
+	if has_powerup:
+		if col % 8 == 0:
+			# Super-Stern
+			var star := PlatformerStar.new()
+			star.position = block.position - Vector2(0.0, PlatformerConfig.TILE_SIZE * 0.8)
+			powerups.append(star)
+			add_child(star)
+			powerup_spawned.emit(star)
+		elif is_big:
+			# Feuerblume
+			var flower := PlatformerFlower.new()
+			flower.position = block.position - Vector2(0.0, PlatformerConfig.TILE_SIZE * 0.8)
+			powerups.append(flower)
+			add_child(flower)
+			powerup_spawned.emit(flower)
+		else:
+			# Super-Pilz
+			var mushroom := PlatformerMushroom.new()
+			mushroom.position = block.position - Vector2(0.0, PlatformerConfig.TILE_SIZE * 0.8)
+			powerups.append(mushroom)
+			add_child(mushroom)
+			powerup_spawned.emit(mushroom)
 	else:
 		coin_collected.emit(col, row)
