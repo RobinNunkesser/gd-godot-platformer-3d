@@ -71,7 +71,7 @@ func _build_components() -> void:
 	area.body_entered.connect(_on_body_entered)
 	add_child(area)
 
-func update_enemy(delta: float) -> void:
+func update_enemy(delta: float, _player: Node3D = null) -> void:
 	if is_dead:
 		return
 

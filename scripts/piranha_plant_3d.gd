@@ -66,7 +66,7 @@ func update_enemy(delta: float, player: Node3D = null) -> void:
 	cycle_timer += delta
 
 	# In 3D ist Y nach oben positiv!
-	if player and absf(player.global_position.x - global_position.x) < 0.8:
+	if player and is_inside_tree() and player.is_inside_tree() and absf(player.global_position.x - global_position.x) < 0.8:
 		position.y = base_y
 		return
 

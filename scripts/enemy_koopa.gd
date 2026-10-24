@@ -64,7 +64,7 @@ func _build_components() -> void:
 	area.body_entered.connect(_on_body_entered)
 	add_child(area)
 
-func update_enemy(delta: float) -> void:
+func update_enemy(delta: float, _player: Node2D = null) -> void:
 	velocity.y += PlatformerConfig.GRAVITY * delta
 
 	match current_state:

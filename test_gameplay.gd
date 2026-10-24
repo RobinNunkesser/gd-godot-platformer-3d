@@ -9,12 +9,14 @@ const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 const TileMapLoader3D = preload("res://scripts/tilemap_loader_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
 
+const PlatformerEnemy = preload("res://scripts/enemy.gd")
 const PlatformerKoopa = preload("res://scripts/enemy_koopa.gd")
 const PlatformerBulletBill = preload("res://scripts/bullet_bill.gd")
 const PlatformerCannon = preload("res://scripts/cannon.gd")
 const PlatformerPiranhaPlant = preload("res://scripts/piranha_plant.gd")
 const PlatformerFireball = preload("res://scripts/fireball.gd")
 
+const PlatformerEnemy3D = preload("res://scripts/enemy_3d.gd")
 const PlatformerKoopa3D = preload("res://scripts/enemy_koopa_3d.gd")
 const PlatformerBulletBill3D = preload("res://scripts/bullet_bill_3d.gd")
 const PlatformerCannon3D = preload("res://scripts/cannon_3d.gd")
@@ -271,7 +273,48 @@ func _init() -> void:
 		success = false
 	else:
 		print("  -> 3D Fire Flower, Starman, and Koopa 3D OK.")
-	koopa3d.queue_free()
+	# Test 6l: update_enemy with player parameter across all 2D & 3D enemies
+	var g2d = PlatformerEnemy.new()
+	root.add_child(g2d)
+	g2d.update_enemy(0.016, player2d_inst)
+	g2d.queue_free()
+
+	var k2d = PlatformerKoopa.new()
+	root.add_child(k2d)
+	k2d.update_enemy(0.016, player2d_inst)
+	k2d.queue_free()
+
+	var b2d = PlatformerBulletBill.new()
+	root.add_child(b2d)
+	b2d.update_enemy(0.016, player2d_inst)
+	b2d.queue_free()
+
+	var p2d = PlatformerPiranhaPlant.new()
+	root.add_child(p2d)
+	p2d.update_enemy(0.016, player2d_inst)
+	p2d.queue_free()
+
+	var g3d = PlatformerEnemy3D.new()
+	root.add_child(g3d)
+	g3d.update_enemy(0.016, player3d)
+	g3d.queue_free()
+
+	var k3d = PlatformerKoopa3D.new()
+	root.add_child(k3d)
+	k3d.update_enemy(0.016, player3d)
+	k3d.queue_free()
+
+	var b3d = PlatformerBulletBill3D.new()
+	root.add_child(b3d)
+	b3d.update_enemy(0.016, player3d)
+	b3d.queue_free()
+
+	var p3d = PlatformerPiranhaPlant3D.new()
+	root.add_child(p3d)
+	p3d.update_enemy(0.016, player3d)
+	p3d.queue_free()
+
+	print("  -> update_enemy(delta, player) across all 2D & 3D enemies OK.")
 
 	player2d_inst.queue_free()
 	player3d.queue_free()

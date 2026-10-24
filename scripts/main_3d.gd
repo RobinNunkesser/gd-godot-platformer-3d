@@ -52,6 +52,8 @@ func _ready() -> void:
 	player.fireball_requested.connect(_on_fireball_requested)
 
 	load_level(0)
+	camera.current = true
+	camera.make_current()
 	_bind_ui_buttons()
 	_update_hud()
 	_show_overlay(overlay_start)
@@ -78,6 +80,10 @@ func _bind_ui_buttons() -> void:
 	victory_btn.pressed.connect(on_victory_action)
 
 func _process(delta: float) -> void:
+	if state_manager.current_state == PlatformerStateManager.State.READY:
+		if Input.is_action_just_pressed("jump") or Input.is_key_pressed(KEY_ENTER):
+			start_game()
+
 	if Input.is_action_just_pressed("pause"):
 		toggle_pause()
 	if Input.is_action_just_pressed("restart"):

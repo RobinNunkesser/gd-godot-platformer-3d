@@ -30,4 +30,5 @@ const DEATH_Y: float = -3.0
 # Kamera
 const CAMERA_Z: float = 16.0
 const CAMERA_HEIGHT_OFFSET: float = 2.5
+const CAMERA_LEAD_X: float = 4.0
 const CAMERA_LERP_SPEED: float = 5.0

@@ -63,7 +63,7 @@ func update_enemy(delta: float, player: Node2D = null) -> void:
 	cycle_timer += delta
 
 	# Wenn Spieler direkt über der Röhre steht, bleibt die Pflanze unten
-	if player and absf(player.global_position.x - global_position.x) < 32.0:
+	if player and is_inside_tree() and player.is_inside_tree() and absf(player.global_position.x - global_position.x) < 32.0:
 		position.y = base_y
 		return
 
