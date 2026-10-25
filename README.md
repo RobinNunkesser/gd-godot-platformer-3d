@@ -136,15 +136,20 @@ Der Parser verarbeitet beliebige 14-zeilige ASCII-Karten im Standardformat des *
 
 ---
 
-## 🎮 Steuerung
+## 🎮 Konfigurierbare Steuerung
 
-| Aktion | Tastatur |
-|---|---|
-| **Laufen** | `A` / `D` oder Pfeiltasten `←` / `→` |
-| **Springen** | `Leertaste`, `W` oder Pfeiltaste `↑` |
-| **Feuerball schießen** | `F`, `Shift`, `X` oder `J` (im Feuerblumen-Zustand) |
-| **Pause** | `P` |
-| **Schnell-Reset** | `R` |
+Die Steuerung kann jederzeit über den UI-Button im Start- und Pause-Menü oder über die Taste **`[C]`** (bzw. Gamepad **`[LB]`**) zwischen 4 Schemata umgeschaltet werden:
+
+| Aktion | Tastatur 1 (WASD) | Tastatur 2 (Pfeile) | Gamepad (Controller) |
+|---|---|---|---|
+| **Laufen** | `A` / `D` | `←` / `→` | Linker Stick / D-Pad |
+| **Springen** | `Leertaste` / `W` | `↑` / `Rechtes Strg` / `Numpad 0` | Button `A` (Kreuz) / Button `Y` |
+| **Feuerball schießen** | `Shift` / `F` / `X` / `J` | `Enter` / `KP_Enter` / `Numpad 1` | Button `X` / `B` / Rechter Trigger `RT` |
+| **Pause** | `P` / `Esc` | `P` / `Esc` | Button `Start` |
+| **Schnell-Reset** | `R` | `R` | Button `Select / Back` |
+| **Steuerung wechseln** | `C` | `C` | Button `LB` (Left Bumper) |
+
+Zusätzlich steht das Schema **„Alle aktiv (Kombiniert)“** bereit, bei dem sämtliche Eingabemethoden simultan reagieren.
 
 ---
 

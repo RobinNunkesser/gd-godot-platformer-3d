@@ -6,10 +6,15 @@ const PlatformerStateManager = preload("res://scripts/state_manager.gd")
 const TileMapLoader = preload("res://scripts/tilemap_loader.gd")
 const PlatformerPlayer = preload("res://scripts/player.gd")
 const PlatformerFireball = preload("res://scripts/fireball.gd")
+const PlatformerControls = preload("res://scripts/controls.gd")
 
 @onready var tilemap_loader: TileMapLoader = $TileMapLoader
 @onready var player: PlatformerPlayer = $Player
 @onready var camera: Camera2D = $Camera2D
+
+var btn_controls_start: Button
+var btn_controls_pause: Button
+var lbl_banner: Label
 
 # UI
 @onready var lbl_score: Label = $CanvasLayer/HUD/ScoreContainer/ScoreValue
@@ -55,8 +60,101 @@ func _ready() -> void:
 	camera.enabled = true
 	camera.make_current()
 	_bind_ui_buttons()
+	_setup_controls_ui()
 	_update_hud()
 	_show_overlay(overlay_start)
+
+func _setup_controls_ui() -> void:
+	PlatformerControls.init_default()
+
+	var start_card: Panel = $CanvasLayer/StartOverlay/Card
+	if start_card:
+		start_card.offset_top = -175.0
+		start_card.offset_bottom = 175.0
+		var start_inst: Label = start_card.get_node_or_null("Instructions")
+		if start_inst:
+			start_inst.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			start_inst.text = PlatformerControls.get_scheme_instructions()
+			start_inst.offset_top = -45.0
+			start_inst.offset_bottom = 45.0
+		btn_controls_start = Button.new()
+		btn_controls_start.name = "ControlsButton"
+		btn_controls_start.anchors_preset = Control.PRESET_CENTER_BOTTOM
+		btn_controls_start.anchor_left = 0.5
+		btn_controls_start.anchor_top = 1.0
+		btn_controls_start.anchor_right = 0.5
+		btn_controls_start.anchor_bottom = 1.0
+		btn_controls_start.offset_left = -190.0
+		btn_controls_start.offset_top = -102.0
+		btn_controls_start.offset_right = 190.0
+		btn_controls_start.offset_bottom = -68.0
+		btn_controls_start.text = "🎮 " + PlatformerControls.get_scheme_name()
+		btn_controls_start.pressed.connect(cycle_controls)
+		start_card.add_child(btn_controls_start)
+
+	var pause_card: Panel = $CanvasLayer/PauseOverlay/Card
+	if pause_card:
+		pause_card.offset_top = -125.0
+		pause_card.offset_bottom = 125.0
+		btn_controls_pause = Button.new()
+		btn_controls_pause.name = "ControlsButton"
+		btn_controls_pause.anchors_preset = Control.PRESET_CENTER_BOTTOM
+		btn_controls_pause.anchor_left = 0.5
+		btn_controls_pause.anchor_top = 1.0
+		btn_controls_pause.anchor_right = 0.5
+		btn_controls_pause.anchor_bottom = 1.0
+		btn_controls_pause.offset_left = -150.0
+		btn_controls_pause.offset_top = -100.0
+		btn_controls_pause.offset_right = 150.0
+		btn_controls_pause.offset_bottom = -68.0
+		btn_controls_pause.text = "🎮 " + PlatformerControls.get_scheme_name()
+		btn_controls_pause.pressed.connect(cycle_controls)
+		pause_card.add_child(btn_controls_pause)
+
+	lbl_banner = Label.new()
+	lbl_banner.name = "ControlsBanner"
+	lbl_banner.anchors_preset = Control.PRESET_CENTER_TOP
+	lbl_banner.anchor_left = 0.5
+	lbl_banner.anchor_right = 0.5
+	lbl_banner.offset_left = -260.0
+	lbl_banner.offset_top = 65.0
+	lbl_banner.offset_right = 260.0
+	lbl_banner.offset_bottom = 105.0
+	lbl_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl_banner.visible = false
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.1, 0.16, 0.92)
+	sb.corner_radius_top_left = 8
+	sb.corner_radius_top_right = 8
+	sb.corner_radius_bottom_left = 8
+	sb.corner_radius_bottom_right = 8
+	lbl_banner.add_theme_stylebox_override("panel", sb)
+	lbl_banner.add_theme_font_size_override("font_size", 16)
+	lbl_banner.add_theme_color_override("font_color", Color(1.0, 0.9, 0.3))
+	$CanvasLayer.add_child(lbl_banner)
+
+func cycle_controls() -> void:
+	var new_scheme := PlatformerControls.cycle_scheme()
+	var txt := "🎮 " + PlatformerControls.get_scheme_name(new_scheme)
+	if btn_controls_start:
+		btn_controls_start.text = txt
+	if btn_controls_pause:
+		btn_controls_pause.text = txt
+	var start_inst: Label = $CanvasLayer/StartOverlay/Card.get_node_or_null("Instructions")
+	if start_inst:
+		start_inst.text = PlatformerControls.get_scheme_instructions(new_scheme)
+
+	if lbl_banner and is_inside_tree():
+		lbl_banner.visible = true
+		lbl_banner.text = "STEUERUNG: " + PlatformerControls.get_scheme_name(new_scheme)
+		var tw := create_tween()
+		if tw:
+			tw.tween_interval(1.4)
+			tw.tween_callback(func():
+				if is_instance_valid(lbl_banner):
+					lbl_banner.visible = false
+			)
 
 func load_level(index: int) -> void:
 	current_level_index = clamp(index, 0, LEVELS.size() - 1)
@@ -80,6 +178,9 @@ func _bind_ui_buttons() -> void:
 	victory_btn.pressed.connect(on_victory_action)
 
 func _process(delta: float) -> void:
+	if Input.is_action_just_pressed("cycle_controls"):
+		cycle_controls()
+
 	if state_manager.current_state == PlatformerStateManager.State.READY:
 		if Input.is_action_just_pressed("jump") or Input.is_key_pressed(KEY_ENTER):
 			start_game()

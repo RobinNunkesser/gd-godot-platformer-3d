@@ -22,13 +22,14 @@ const PlatformerBulletBill3D = preload("res://scripts/bullet_bill_3d.gd")
 const PlatformerCannon3D = preload("res://scripts/cannon_3d.gd")
 const PlatformerPiranhaPlant3D = preload("res://scripts/piranha_plant_3d.gd")
 const PlatformerFireball3D = preload("res://scripts/fireball_3d.gd")
+const PlatformerControls = preload("res://scripts/controls.gd")
 
 func _init() -> void:
 	print("--- Running Headless Godot 4 Unit & Gameplay Tests (2D & 3D) ---")
 	var success := true
 
 	# Test 1: PlatformerConfig
-	print("[1/6] Testing PlatformerConfig (2D & 3D)...")
+	print("[1/7] Testing PlatformerConfig (2D & 3D)...")
 	if PlatformerConfig.TILE_SIZE <= 0 or PlatformerConfig.GRAVITY <= 0 or PlatformerConfig.JUMP_FORCE >= 0:
 		push_error("2D Config constants invalid!")
 		success = false
@@ -39,7 +40,7 @@ func _init() -> void:
 		print("  -> Config constants OK.")
 
 	# Test 2: PlatformerStateManager
-	print("[2/6] Testing PlatformerStateManager...")
+	print("[2/7] Testing PlatformerStateManager...")
 	var sm = PlatformerStateManager.new()
 	sm.reset()
 	if sm.get_state_string() != "READY":
@@ -60,7 +61,7 @@ func _init() -> void:
 	print("  -> StateManager OK.")
 
 	# Test 3: TileMapLoader 2D (All 5 Curated Levels)
-	print("[3/6] Testing TileMapLoader (2D) on all 5 curated levels...")
+	print("[3/7] Testing TileMapLoader (2D) on all 5 curated levels...")
 	var loader = TileMapLoader.new()
 	root.add_child(loader)
 	for i in range(1, 6):
@@ -74,7 +75,7 @@ func _init() -> void:
 	loader.queue_free()
 
 	# Test 4: Player 2D Kinematics
-	print("[4/6] Testing Player 2D Kinematics...")
+	print("[4/7] Testing Player 2D Kinematics...")
 	var player_scene = preload("res://scenes/player.tscn")
 	var player = player_scene.instantiate()
 	root.add_child(player)
@@ -91,7 +92,7 @@ func _init() -> void:
 	player.queue_free()
 
 	# Test 5: TileMapLoader 3D & Player 3D (All 5 Curated Levels)
-	print("[5/6] Testing 3D Pipeline (TileMapLoader3D & Player3D on 5 levels)...")
+	print("[5/7] Testing 3D Pipeline (TileMapLoader3D & Player3D on 5 levels)...")
 	var loader3d = TileMapLoader3D.new()
 	root.add_child(loader3d)
 	for i in range(1, 6):
@@ -125,7 +126,7 @@ func _init() -> void:
 		print("  -> Player 3D kinematics OK (velocity.y = %f)." % player3d.velocity.y)
 
 	# Test 6: Enemies & Power-Ups (2D & 3D)
-	print("[6/6] Testing Enemies & Power-Ups (2D & 3D)...")
+	print("[6/7] Testing Enemies & Power-Ups (2D & 3D)...")
 	var player2d_inst = player_scene.instantiate()
 	root.add_child(player2d_inst)
 	player2d_inst.reset_position()
@@ -318,6 +319,37 @@ func _init() -> void:
 
 	player2d_inst.queue_free()
 	player3d.queue_free()
+
+	# Test 7: PlatformerControls Schemes
+	print("[7/7] Testing PlatformerControls schemes & dynamic switching...")
+	PlatformerControls.set_scheme(PlatformerControls.Scheme.KEYBOARD_1)
+	if PlatformerControls.current_scheme != PlatformerControls.Scheme.KEYBOARD_1:
+		push_error("Failed to set KEYBOARD_1 scheme!")
+		success = false
+	if not InputMap.has_action("move_left") or not InputMap.has_action("jump") or not InputMap.has_action("shoot"):
+		push_error("InputMap missing actions after applying KEYBOARD_1!")
+		success = false
+
+	var s2 = PlatformerControls.cycle_scheme()
+	if s2 != PlatformerControls.Scheme.KEYBOARD_2:
+		push_error("Cycle scheme did not advance to KEYBOARD_2!")
+		success = false
+
+	var s3 = PlatformerControls.cycle_scheme()
+	if s3 != PlatformerControls.Scheme.GAMEPAD:
+		push_error("Cycle scheme did not advance to GAMEPAD!")
+		success = false
+
+	var s4 = PlatformerControls.cycle_scheme()
+	if s4 != PlatformerControls.Scheme.ALL:
+		push_error("Cycle scheme did not advance to ALL!")
+		success = false
+
+	var s1 = PlatformerControls.cycle_scheme()
+	if s1 != PlatformerControls.Scheme.KEYBOARD_1:
+		push_error("Cycle scheme did not cycle back to KEYBOARD_1!")
+		success = false
+	print("  -> PlatformerControls scheme cycling & InputMap OK.")
 
 	if success:
 		print("=== ALL GODOT 4 TESTS (2D & 3D) PASSED SUCCESSFULLY! ===")
