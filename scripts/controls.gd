@@ -20,10 +20,10 @@ const SCHEME_NAMES = {
 }
 
 const SCHEME_INSTRUCTIONS = {
-	Scheme.KEYBOARD_1: "A / D: Laufen  |  Leertaste / W: Springen (variabel)  |  Shift / F / X: Schießen\nP: Pause  |  R: Reset  |  C: Steuerung wechseln",
-	Scheme.KEYBOARD_2: "Pfeiltasten ← / →: Laufen  |  Pfeiltaste ↑ / Strg: Springen  |  Enter / Numpad 0: Schießen\nP: Pause  |  R: Reset  |  C: Steuerung wechseln",
-	Scheme.GAMEPAD: "Stick / D-Pad: Laufen  |  Button A: Springen  |  Button X / B / RT: Schießen\nStart: Pause  |  Select: Reset  |  LB / C: Steuerung wechseln",
-	Scheme.ALL: "WASD / Pfeile / Stick: Laufen  |  Space / W / ↑ / A: Springen  |  Shift / F / Enter / X: Schießen\nP / Start: Pause  |  R: Reset  |  C: Steuerung wechseln"
+	Scheme.KEYBOARD_1: "A / D: Laufen  |  Leertaste / W: Springen  |  Shift / F / X: Schießen\nP: Pause  |  R: Reset  |  C: Steuerung  |  K: Level-Satz  |  L: Level",
+	Scheme.KEYBOARD_2: "Pfeiltasten ← / →: Laufen  |  Pfeil ↑ / Strg: Springen  |  Enter / 0: Schießen\nP: Pause  |  R: Reset  |  C: Steuerung  |  K: Level-Satz  |  L: Level",
+	Scheme.GAMEPAD: "Stick / D-Pad: Laufen  |  Button A: Springen  |  Button X / B / RT: Schießen\nStart: Pause  |  Select: Reset  |  LB: Steuerung  |  K / L: Level",
+	Scheme.ALL: "WASD / Pfeile / Stick: Laufen  |  Space / W / ↑ / A: Springen  |  Shift / F / Enter: Schießen\nP: Pause  |  R: Reset  |  C: Steuerung  |  K: Level-Satz  |  L: Level"
 }
 
 static var current_scheme: Scheme = Scheme.ALL
@@ -74,15 +74,19 @@ static func _make_joy_motion(axis: JoyAxis, val: float, dev: int = -1) -> InputE
 	return ev
 
 static func apply_scheme(scheme: Scheme) -> void:
-	var actions := ["move_left", "move_right", "jump", "shoot", "pause", "restart", "cycle_controls"]
+	var actions := ["move_left", "move_right", "jump", "shoot", "pause", "restart", "cycle_controls", "cycle_level_set", "cycle_level"]
 	for a in actions:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
 		InputMap.action_erase_events(a)
 
-	# Taste C / LB wechselt immer das Schema
+	# Taste C / LB wechselt das Schema
 	InputMap.action_add_event("cycle_controls", _make_key(KEY_C))
 	InputMap.action_add_event("cycle_controls", _make_joy_button(JOY_BUTTON_LEFT_SHOULDER))
+
+	# Tasten K & L für Level-Satz und Level
+	InputMap.action_add_event("cycle_level_set", _make_key(KEY_K))
+	InputMap.action_add_event("cycle_level", _make_key(KEY_L))
 
 	match scheme:
 		Scheme.KEYBOARD_1:

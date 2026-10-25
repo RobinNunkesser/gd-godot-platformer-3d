@@ -62,27 +62,38 @@ func load_level_from_file(path: String) -> bool:
 			level_width_cols = l.length()
 
 	var ts := PlatformerConfig.TILE_SIZE
+	var has_flagpole: bool = false
 
 	for row in range(level_height_rows):
 		var line := lines[row]
 		for col in range(line.length()):
 			var char := line[col]
+			if char == "F" or char == "|":
+				has_flagpole = true
 			var pos := Vector2(col * ts, row * ts)
 			_create_tile(char, col, row, pos, ts)
+
+	if not has_flagpole and level_width_cols > 0:
+		var goal_col: int = maxi(5, level_width_cols - 4)
+		flagpole_col = goal_col
+		var pos_x := float(goal_col) * ts
+		for h in range(5, 14):
+			var pos_y := float(h) * ts
+			_create_flagpole(Vector2(pos_x, pos_y), ts)
 
 	return true
 
 func _create_tile(char: String, col: int, row: int, pos: Vector2, ts: float) -> void:
 	match char:
-		"X":
+		"X", "x":
 			_create_solid_block(pos, ts, Color("#d97334"), "Ground")
-		"S":
+		"S", "s":
 			_create_brick_block(pos, ts, col, row)
-		"?", "Q":
+		"?", "Q", "q":
 			_create_question_block(pos, ts, col, row)
 		"<", ">", "[", "]":
 			_create_solid_block(pos, ts, Color("#10b981"), "Pipe")
-		"E":
+		"E", "e":
 			_create_enemy(pos, ts)
 		"K", "k":
 			_create_koopa(pos, ts)
@@ -90,15 +101,15 @@ func _create_tile(char: String, col: int, row: int, pos: Vector2, ts: float) -> 
 			_create_cannon(pos, ts, true)
 		"b":
 			_create_cannon(pos, ts, false)
-		"P", "y":
+		"P", "p", "y":
 			_create_piranha(pos, ts)
-		"M":
+		"M", "m":
 			_create_mushroom(pos, ts)
 		"f":
 			_create_flower(pos, ts)
 		"*":
 			_create_star(pos, ts)
-		"o":
+		"o", "O":
 			_create_coin(pos, ts, col, row)
 		"F", "|":
 			flagpole_col = col

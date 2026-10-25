@@ -23,6 +23,7 @@ const PlatformerCannon3D = preload("res://scripts/cannon_3d.gd")
 const PlatformerPiranhaPlant3D = preload("res://scripts/piranha_plant_3d.gd")
 const PlatformerFireball3D = preload("res://scripts/fireball_3d.gd")
 const PlatformerControls = preload("res://scripts/controls.gd")
+const PlatformerLevelManager = preload("res://scripts/level_manager.gd")
 
 func _init() -> void:
 	print("--- Running Headless Godot 4 Unit & Gameplay Tests (2D & 3D) ---")
@@ -321,7 +322,7 @@ func _init() -> void:
 	player3d.queue_free()
 
 	# Test 7: PlatformerControls Schemes
-	print("[7/7] Testing PlatformerControls schemes & dynamic switching...")
+	print("[7/8] Testing PlatformerControls schemes & dynamic switching...")
 	PlatformerControls.set_scheme(PlatformerControls.Scheme.KEYBOARD_1)
 	if PlatformerControls.current_scheme != PlatformerControls.Scheme.KEYBOARD_1:
 		push_error("Failed to set KEYBOARD_1 scheme!")
@@ -350,6 +351,59 @@ func _init() -> void:
 		push_error("Cycle scheme did not cycle back to KEYBOARD_1!")
 		success = false
 	print("  -> PlatformerControls scheme cycling & InputMap OK.")
+
+	# Test 8: PlatformerLevelManager & Original SMB Levels
+	print("[8/8] Testing PlatformerLevelManager & Original SMB Levels (VGLC)...")
+	PlatformerLevelManager.init_catalog()
+	var sets := PlatformerLevelManager.get_available_sets()
+	if sets.size() < 2:
+		push_error("LevelManager should discover at least 2 built-in sets (Curated & Original SMB), found: %d" % sets.size())
+		success = false
+	else:
+		print("  -> Discovered %d level sets:" % sets.size())
+		for st in sets:
+			print("     * %s [id=%s, levels=%d, external=%s]" % [st.name, st.id, st.levels.size(), str(st.is_external)])
+
+	# Test Original SMB Set selection
+	var smb_selected := PlatformerLevelManager.select_set_by_id("original")
+	if not smb_selected:
+		push_error("Failed to select 'original' level set!")
+		success = false
+	else:
+		var count := PlatformerLevelManager.get_level_count()
+		if count != 15:
+			push_error("Expected 15 original SMB levels, got: %d" % count)
+			success = false
+		else:
+			print("  -> Selected 'original' set: verified 15 Super Mario Bros levels.")
+
+		# Test loading all 15 original levels in TileMapLoader3D
+		var loader_smb := TileMapLoader3D.new()
+		root.add_child(loader_smb)
+		for i in range(count):
+			var lvl_path := PlatformerLevelManager.get_level_path(i)
+			var lvl_name := PlatformerLevelManager.get_level_display_name(i)
+			var loaded := loader_smb.load_level_from_file(lvl_path)
+			if not loaded or loader_smb.level_height_rows != 14 or loader_smb.level_width_cols < 80:
+				push_error("Failed parsing original level %s (%s)!" % [lvl_name, lvl_path])
+				success = false
+			else:
+				if i == 0 or i == count - 1:
+					print("     - %s loaded: %d rows x %d cols (goal flag at col %d) OK." % [lvl_name, loader_smb.level_height_rows, loader_smb.level_width_cols, loader_smb.flagpole_col])
+		loader_smb.queue_free()
+
+	# Test canonical directory and README creation
+	var ext_dir := PlatformerLevelManager.ensure_default_levels_dir()
+	if ext_dir.is_empty() or not DirAccess.dir_exists_absolute(ext_dir):
+		push_error("Failed to ensure default levels directory: " + ext_dir)
+		success = false
+	else:
+		var readme_path := ext_dir.path_join("README.txt")
+		if not FileAccess.file_exists(readme_path):
+			push_error("README.txt was not created in external levels dir: " + readme_path)
+			success = false
+		else:
+			print("  -> External levels directory and README.txt verified: %s" % ext_dir)
 
 	if success:
 		print("=== ALL GODOT 4 TESTS (2D & 3D) PASSED SUCCESSFULLY! ===")

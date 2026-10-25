@@ -7,6 +7,7 @@ const TileMapLoader3D = preload("res://scripts/tilemap_loader_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
 const PlatformerFireball3D = preload("res://scripts/fireball_3d.gd")
 const PlatformerControls = preload("res://scripts/controls.gd")
+const PlatformerLevelManager = preload("res://scripts/level_manager.gd")
 
 @onready var tilemap_loader: TileMapLoader3D = $TileMapLoader3D
 @onready var player: PlatformerPlayer3D = $Player3D
@@ -14,6 +15,10 @@ const PlatformerControls = preload("res://scripts/controls.gd")
 
 var btn_controls_start: Button
 var btn_controls_pause: Button
+var btn_set_start: Button
+var btn_level_start: Button
+var btn_set_pause: Button
+var btn_level_pause: Button
 var lbl_banner: Label
 
 # UI
@@ -56,12 +61,16 @@ func _ready() -> void:
 	player.block_hit_from_below.connect(_on_block_hit)
 	player.fireball_requested.connect(_on_fireball_requested)
 
+	PlatformerLevelManager.init_catalog()
+	PlatformerLevelManager.apply_saved_set()
+
 	load_level(0)
 	camera.current = true
 	camera.make_current()
 	_bind_ui_buttons()
 	_setup_controls_ui()
 	_update_hud()
+	_update_level_ui_buttons()
 	_show_overlay(overlay_start)
 
 func _setup_controls_ui() -> void:
@@ -69,14 +78,43 @@ func _setup_controls_ui() -> void:
 
 	var start_card: Panel = $CanvasLayer/StartOverlay/Card
 	if start_card:
-		start_card.offset_top = -175.0
-		start_card.offset_bottom = 175.0
+		start_card.offset_top = -225.0
+		start_card.offset_bottom = 225.0
 		var start_inst: Label = start_card.get_node_or_null("Instructions")
 		if start_inst:
 			start_inst.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			start_inst.text = PlatformerControls.get_scheme_instructions()
-			start_inst.offset_top = -45.0
-			start_inst.offset_bottom = 45.0
+			start_inst.offset_top = -65.0
+			start_inst.offset_bottom = 25.0
+
+		btn_set_start = Button.new()
+		btn_set_start.name = "LevelSetButton"
+		btn_set_start.anchors_preset = Control.PRESET_CENTER_BOTTOM
+		btn_set_start.anchor_left = 0.5
+		btn_set_start.anchor_top = 1.0
+		btn_set_start.anchor_right = 0.5
+		btn_set_start.anchor_bottom = 1.0
+		btn_set_start.offset_left = -200.0
+		btn_set_start.offset_top = -180.0
+		btn_set_start.offset_right = 200.0
+		btn_set_start.offset_bottom = -148.0
+		btn_set_start.pressed.connect(cycle_level_set)
+		start_card.add_child(btn_set_start)
+
+		btn_level_start = Button.new()
+		btn_level_start.name = "LevelSelectButton"
+		btn_level_start.anchors_preset = Control.PRESET_CENTER_BOTTOM
+		btn_level_start.anchor_left = 0.5
+		btn_level_start.anchor_top = 1.0
+		btn_level_start.anchor_right = 0.5
+		btn_level_start.anchor_bottom = 1.0
+		btn_level_start.offset_left = -200.0
+		btn_level_start.offset_top = -142.0
+		btn_level_start.offset_right = 200.0
+		btn_level_start.offset_bottom = -110.0
+		btn_level_start.pressed.connect(cycle_level_select)
+		start_card.add_child(btn_level_start)
+
 		btn_controls_start = Button.new()
 		btn_controls_start.name = "ControlsButton"
 		btn_controls_start.anchors_preset = Control.PRESET_CENTER_BOTTOM
@@ -84,18 +122,52 @@ func _setup_controls_ui() -> void:
 		btn_controls_start.anchor_top = 1.0
 		btn_controls_start.anchor_right = 0.5
 		btn_controls_start.anchor_bottom = 1.0
-		btn_controls_start.offset_left = -190.0
-		btn_controls_start.offset_top = -102.0
-		btn_controls_start.offset_right = 190.0
-		btn_controls_start.offset_bottom = -68.0
+		btn_controls_start.offset_left = -200.0
+		btn_controls_start.offset_top = -104.0
+		btn_controls_start.offset_right = 200.0
+		btn_controls_start.offset_bottom = -72.0
 		btn_controls_start.text = "🎮 " + PlatformerControls.get_scheme_name()
 		btn_controls_start.pressed.connect(cycle_controls)
 		start_card.add_child(btn_controls_start)
 
+		var start_btn: Button = start_card.get_node_or_null("StartButton")
+		if start_btn:
+			start_btn.offset_top = -64.0
+			start_btn.offset_bottom = -20.0
+
 	var pause_card: Panel = $CanvasLayer/PauseOverlay/Card
 	if pause_card:
-		pause_card.offset_top = -125.0
-		pause_card.offset_bottom = 125.0
+		pause_card.offset_top = -180.0
+		pause_card.offset_bottom = 180.0
+
+		btn_set_pause = Button.new()
+		btn_set_pause.name = "LevelSetButton"
+		btn_set_pause.anchors_preset = Control.PRESET_CENTER_BOTTOM
+		btn_set_pause.anchor_left = 0.5
+		btn_set_pause.anchor_top = 1.0
+		btn_set_pause.anchor_right = 0.5
+		btn_set_pause.anchor_bottom = 1.0
+		btn_set_pause.offset_left = -170.0
+		btn_set_pause.offset_top = -170.0
+		btn_set_pause.offset_right = 170.0
+		btn_set_pause.offset_bottom = -140.0
+		btn_set_pause.pressed.connect(cycle_level_set)
+		pause_card.add_child(btn_set_pause)
+
+		btn_level_pause = Button.new()
+		btn_level_pause.name = "LevelSelectButton"
+		btn_level_pause.anchors_preset = Control.PRESET_CENTER_BOTTOM
+		btn_level_pause.anchor_left = 0.5
+		btn_level_pause.anchor_top = 1.0
+		btn_level_pause.anchor_right = 0.5
+		btn_level_pause.anchor_bottom = 1.0
+		btn_level_pause.offset_left = -170.0
+		btn_level_pause.offset_top = -134.0
+		btn_level_pause.offset_right = 170.0
+		btn_level_pause.offset_bottom = -104.0
+		btn_level_pause.pressed.connect(cycle_level_select)
+		pause_card.add_child(btn_level_pause)
+
 		btn_controls_pause = Button.new()
 		btn_controls_pause.name = "ControlsButton"
 		btn_controls_pause.anchors_preset = Control.PRESET_CENTER_BOTTOM
@@ -103,9 +175,9 @@ func _setup_controls_ui() -> void:
 		btn_controls_pause.anchor_top = 1.0
 		btn_controls_pause.anchor_right = 0.5
 		btn_controls_pause.anchor_bottom = 1.0
-		btn_controls_pause.offset_left = -150.0
-		btn_controls_pause.offset_top = -100.0
-		btn_controls_pause.offset_right = 150.0
+		btn_controls_pause.offset_left = -170.0
+		btn_controls_pause.offset_top = -98.0
+		btn_controls_pause.offset_right = 170.0
 		btn_controls_pause.offset_bottom = -68.0
 		btn_controls_pause.text = "🎮 " + PlatformerControls.get_scheme_name()
 		btn_controls_pause.pressed.connect(cycle_controls)
@@ -144,21 +216,53 @@ func cycle_controls() -> void:
 	var start_inst: Label = $CanvasLayer/StartOverlay/Card.get_node_or_null("Instructions")
 	if start_inst:
 		start_inst.text = PlatformerControls.get_scheme_instructions(new_scheme)
+	_show_banner("STEUERUNG: " + PlatformerControls.get_scheme_name(new_scheme))
 
+func cycle_level_set() -> void:
+	var new_set := PlatformerLevelManager.cycle_set()
+	current_level_index = 0
+	load_level(current_level_index)
+	_update_level_ui_buttons()
+	_show_banner("LEVEL-SATZ: " + new_set.get("name", ""))
+
+func cycle_level_select() -> void:
+	current_level_index = PlatformerLevelManager.cycle_level(current_level_index)
+	load_level(current_level_index)
+	_update_level_ui_buttons()
+	_show_banner("LEVEL: " + PlatformerLevelManager.get_level_display_name(current_level_index))
+
+func _show_banner(text: String) -> void:
 	if lbl_banner and is_inside_tree():
 		lbl_banner.visible = true
-		lbl_banner.text = "STEUERUNG: " + PlatformerControls.get_scheme_name(new_scheme)
+		lbl_banner.text = text
 		var tw := create_tween()
 		if tw:
-			tw.tween_interval(1.4)
+			tw.tween_interval(1.5)
 			tw.tween_callback(func():
 				if is_instance_valid(lbl_banner):
 					lbl_banner.visible = false
 			)
 
+func _update_level_ui_buttons() -> void:
+	var set_txt := "📦 Satz: " + PlatformerLevelManager.get_current_set_name()
+	var lvl_txt := "🗺️ Level: " + PlatformerLevelManager.get_level_display_name(current_level_index)
+	if btn_set_start:
+		btn_set_start.text = set_txt
+	if btn_set_pause:
+		btn_set_pause.text = set_txt
+	if btn_level_start:
+		btn_level_start.text = lvl_txt
+	if btn_level_pause:
+		btn_level_pause.text = lvl_txt
+
 func load_level(index: int) -> void:
-	current_level_index = clamp(index, 0, LEVELS.size() - 1)
-	var path: String = LEVELS[current_level_index]
+	var count := PlatformerLevelManager.get_level_count()
+	if count <= 0:
+		count = LEVELS.size()
+	current_level_index = clampi(index, 0, count - 1)
+	var path: String = PlatformerLevelManager.get_level_path(current_level_index)
+	if path.is_empty() and current_level_index < LEVELS.size():
+		path = LEVELS[current_level_index]
 	tilemap_loader.load_level_from_file(path)
 	player.reset_position()
 	camera.position.x = PlatformerConfig3D.START_X + 4.0
@@ -170,6 +274,7 @@ func load_level(index: int) -> void:
 			cannon.bullet_fired.connect(_on_cannon_bullet_fired)
 
 	_update_hud()
+	_update_level_ui_buttons()
 
 func _bind_ui_buttons() -> void:
 	$CanvasLayer/StartOverlay/Card/StartButton.pressed.connect(start_game)
@@ -180,6 +285,10 @@ func _bind_ui_buttons() -> void:
 func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("cycle_controls"):
 		cycle_controls()
+	if Input.is_action_just_pressed("cycle_level_set"):
+		cycle_level_set()
+	if Input.is_action_just_pressed("cycle_level"):
+		cycle_level_select()
 
 	if state_manager.current_state == PlatformerStateManager.State.READY:
 		if Input.is_action_just_pressed("jump") or Input.is_key_pressed(KEY_ENTER):
@@ -251,7 +360,10 @@ func restart_game() -> void:
 	state_manager.start()
 
 func on_victory_action() -> void:
-	if current_level_index < LEVELS.size() - 1:
+	var count := PlatformerLevelManager.get_level_count()
+	if count <= 0:
+		count = LEVELS.size()
+	if current_level_index < count - 1:
 		current_level_index += 1
 		load_level(current_level_index)
 		_hide_all_overlays()
@@ -312,13 +424,16 @@ func _on_state_changed(new_state: String) -> void:
 			_show_overlay(overlay_gameover)
 		"VICTORY":
 			var victory_score: Label = $CanvasLayer/VictoryOverlay/Card/ScoreLabel
-			if current_level_index < LEVELS.size() - 1:
+			var count := PlatformerLevelManager.get_level_count()
+			if count <= 0:
+				count = LEVELS.size()
+			if current_level_index < count - 1:
 				if victory_title:
-					victory_title.text = "LEVEL %d GESCHAFFT!" % (current_level_index + 1)
+					victory_title.text = "%s GESCHAFFT!" % PlatformerLevelManager.get_level_display_name(current_level_index).to_upper()
 				if victory_score:
 					victory_score.text = "SCORE: " + str(state_manager.score)
 				if victory_btn:
-					victory_btn.text = "NÄCHSTES LEVEL (%d/%d)" % [current_level_index + 2, LEVELS.size()]
+					victory_btn.text = "NÄCHSTES LEVEL (%d/%d)" % [current_level_index + 2, count]
 			else:
 				if victory_title:
 					victory_title.text = "KAMPAGNE GEMEISTERT!"
@@ -338,7 +453,7 @@ func _update_hud() -> void:
 	if lbl_highscore:
 		lbl_highscore.text = "%06d" % state_manager.highscore
 	if lbl_world:
-		lbl_world.text = "1-%d (3D)" % (current_level_index + 1)
+		lbl_world.text = "%s (3D)" % PlatformerLevelManager.get_level_display_name(current_level_index)
 
 func _hide_all_overlays() -> void:
 	overlay_start.visible = false

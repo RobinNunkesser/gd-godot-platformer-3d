@@ -129,31 +129,44 @@ func load_level_from_file(path: String) -> bool:
 			level_width_cols = l.length()
 
 	var ts := PlatformerConfig3D.TILE_SIZE
+	var has_flagpole: bool = false
 
 	for row in range(level_height_rows):
 		var line := lines[row]
 		for col in range(line.length()):
 			var char := line[col]
+			if char == "F" or char == "|":
+				has_flagpole = true
 			# In 3D: worldY = 0 ist Zeile 13 (unterster Boden)
 			var world_y := float(level_height_rows - 1 - row) * ts
 			var world_x := float(col) * ts
 			var pos := Vector3(world_x, world_y, 0.0)
 			_create_tile_3d(char, col, row, pos, ts)
 
+	# Falls kein Zielmast im Level definiert war (z. B. viele VGLC-Rohdateien),
+	# platziere automatisch eine Ziel-Warpbake kurz vor dem Levelende
+	if not has_flagpole and level_width_cols > 0:
+		var goal_col: int = maxi(5, level_width_cols - 4)
+		flagpole_col = goal_col
+		var world_x := float(goal_col) * ts
+		for h in range(1, 9):
+			var world_y := float(h) * ts
+			_create_flagpole_3d(Vector3(world_x, world_y, 0.0), ts)
+
 	_create_parallax_background_3d(level_width_cols * ts)
 	return true
 
 func _create_tile_3d(char: String, col: int, row: int, pos: Vector3, ts: float) -> void:
 	match char:
-		"X":
+		"X", "x":
 			_create_solid_cube_3d(pos, ts, mat_ground, "Ground")
-		"S":
+		"S", "s":
 			_create_brick_cube_3d(pos, ts, col, row)
-		"?", "Q":
+		"?", "Q", "q":
 			_create_question_cube_3d(pos, ts, col, row)
 		"<", ">", "[", "]":
 			_create_solid_cube_3d(pos, ts, mat_pipe, "Pipe", 1.2)
-		"E":
+		"E", "e":
 			_create_enemy_3d(pos, ts)
 		"K", "k":
 			_create_koopa_3d(pos, ts)
@@ -161,15 +174,15 @@ func _create_tile_3d(char: String, col: int, row: int, pos: Vector3, ts: float) 
 			_create_cannon_3d(pos, ts, true)
 		"b":
 			_create_cannon_3d(pos, ts, false)
-		"P", "y":
+		"P", "p", "y":
 			_create_piranha_3d(pos, ts)
-		"M":
+		"M", "m":
 			_create_mushroom_3d(pos, ts)
 		"f":
 			_create_flower_3d(pos, ts)
 		"*":
 			_create_star_3d(pos, ts)
-		"o":
+		"o", "O":
 			_create_coin_3d(pos, ts, col, row)
 		"F", "|":
 			flagpole_col = col
