@@ -3,6 +3,7 @@ extends CharacterBody3D
 
 const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
+const WASP_SCENE: PackedScene = preload("res://assets/models/enemies/Wasp.fbx")
 
 signal stomped(enemy: Node3D)
 signal player_hurt(killed: bool)
@@ -10,6 +11,10 @@ signal player_hurt(killed: bool)
 @export var speed: float = 6.0
 var direction: float = -1.0
 var lifetime: float = 6.0
+
+var visual: Node3D
+var wasp_model: Node3D
+var anim_player: AnimationPlayer
 
 func _ready() -> void:
 	axis_lock_linear_z = true
@@ -23,7 +28,7 @@ func _build_components() -> void:
 	shape.shape = box
 	add_child(shape)
 
-	var visual := Node3D.new()
+	visual = Node3D.new()
 	visual.name = "Visual"
 
 	var mat := StandardMaterial3D.new()
@@ -40,6 +45,17 @@ func _build_components() -> void:
 	mesh_inst.mesh = cyl
 	mesh_inst.rotation.z = PI / 2.0
 	visual.add_child(mesh_inst)
+
+	if WASP_SCENE:
+		mesh_inst.visible = false
+		wasp_model = WASP_SCENE.instantiate()
+		wasp_model.name = "WaspModel"
+		wasp_model.scale = Vector3(0.48, 0.48, 0.48)
+		wasp_model.position = Vector3(0.0, -0.22, 0.0)
+		visual.add_child(wasp_model)
+		anim_player = wasp_model.find_child("AnimationPlayer") as AnimationPlayer
+		if anim_player and anim_player.has_animation("WaspArmature|Wasp_Flying"):
+			anim_player.play("WaspArmature|Wasp_Flying")
 
 	add_child(visual)
 
@@ -63,6 +79,9 @@ func update_enemy(delta: float, _player: Node3D = null) -> void:
 	velocity.y = 0.0
 	velocity.z = 0.0
 	position += velocity * delta
+
+	if visual:
+		visual.rotation.y = (PI / 2.0) if direction > 0.0 else (-PI / 2.0)
 
 func _on_body_entered(body: Node3D) -> void:
 	if not (body is PlatformerPlayer3D):

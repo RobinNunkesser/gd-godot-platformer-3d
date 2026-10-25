@@ -3,6 +3,7 @@ extends Node3D
 
 const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
+const SNAKE_SCENE: PackedScene = preload("res://assets/models/enemies/Snake_angry.fbx")
 
 signal stomped(enemy: Node3D)
 signal player_hurt(killed: bool)
@@ -12,13 +13,17 @@ var extend_height: float = 0.95
 var cycle_timer: float = 0.0
 var is_dead: bool = false
 
+var visual: Node3D
+var snake_model: Node3D
+var anim_player: AnimationPlayer
+
 func _ready() -> void:
 	add_to_group("enemies_3d")
 	base_y = position.y
 	_build_components()
 
 func _build_components() -> void:
-	var visual := Node3D.new()
+	visual = Node3D.new()
 	visual.name = "Visual"
 
 	var mat_stem := StandardMaterial3D.new()
@@ -45,6 +50,18 @@ func _build_components() -> void:
 	head.mesh = sphere
 	head.position.y = 0.7
 	visual.add_child(head)
+
+	if SNAKE_SCENE:
+		stem.visible = false
+		head.visible = false
+		snake_model = SNAKE_SCENE.instantiate()
+		snake_model.name = "SnakeModel"
+		snake_model.scale = Vector3(0.5, 0.5, 0.5)
+		snake_model.position = Vector3(0.0, 0.05, 0.0)
+		visual.add_child(snake_model)
+		anim_player = snake_model.find_child("AnimationPlayer") as AnimationPlayer
+		if anim_player and anim_player.has_animation("SnakeArmature|Snake_Attack"):
+			anim_player.play("SnakeArmature|Snake_Attack")
 
 	add_child(visual)
 

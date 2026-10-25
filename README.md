@@ -153,6 +153,22 @@ Zusätzlich steht das Schema **„Alle aktiv (Kombiniert)“** bereit, bei dem s
 
 ---
 
+## 🎨 3D-Modelle & Animationen (Quaternius CC0)
+
+Das Spiel verwendet voll animierte LowPoly-3D-Charaktere von **Quaternius** ([quaternius.com](https://quaternius.com)), lizenziert unter **CC0 1.0 Universal (Public Domain)**:
+
+- **Hero-Spielfigur (`assets/models/characters/`):**
+  - **Normal / Small Player:** `Alien.fbx` mit Bone-Rigging und flüssigen Animationen (`Alien_Idle`, `Alien_Run`, `Alien_Jump`, `Alien_Death`, `Alien_Punch`).
+  - **Super-Pilz / Big Player:** `Alien_Helmet.fbx` (Astronautenhelm-Variante).
+  - **Feuerblume & Super-Stern:** Dynamische PBR-Material-Emission (Feuer-Glühen und Rainbow-Starman-Farbrad).
+- **Gegner-Suite (`assets/models/enemies/`):**
+  - **Goomba-Pendant:** `Rat.fbx` mit Lauf- und Stomp-Tod-Animation (`Rat_Run`, `Rat_Death`).
+  - **Koopa-Troopa-Pendant:** `Frog.fbx` mit Sprung-, Schlitter- und Rückzugsverhalten (`Frog_Jump`, `Frog_Death`).
+  - **Bullet-Bill-Pendant:** `Wasp.fbx` mit animierten Flügelschlägen im horizontalen Flug (`Wasp_Flying`, `Wasp_Death`).
+  - **Piranha-Pflanzen-Pendant:** `Snake_angry.fbx` schnellt zischend aus Röhren empor (`Snake_Attack`).
+
+---
+
 ## 📄 Lizenz
 
 Dieses Projekt ist unter der **[MIT-Lizenz](LICENSE)** lizenziert.

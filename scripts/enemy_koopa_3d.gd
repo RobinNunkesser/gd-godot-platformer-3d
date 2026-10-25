@@ -3,6 +3,7 @@ extends CharacterBody3D
 
 const PlatformerConfig3D = preload("res://scripts/config_3d.gd")
 const PlatformerPlayer3D = preload("res://scripts/player_3d.gd")
+const FROG_SCENE: PackedScene = preload("res://assets/models/enemies/Frog.fbx")
 
 signal stomped(enemy: Node3D)
 signal player_hurt(killed: bool)
@@ -14,8 +15,11 @@ var current_state: State = State.WALKING
 @export var slide_speed: float = 11.0
 var direction: float = -1.0
 
+var visual: Node3D
 var visual_head: MeshInstance3D
 var visual_shell: MeshInstance3D
+var frog_model: Node3D
+var anim_player: AnimationPlayer
 
 func _ready() -> void:
 	axis_lock_linear_z = true
@@ -29,7 +33,7 @@ func _build_components() -> void:
 	shape.shape = box
 	add_child(shape)
 
-	var visual := Node3D.new()
+	visual = Node3D.new()
 	visual.name = "Visual"
 
 	var mat_shell := StandardMaterial3D.new()
@@ -55,6 +59,18 @@ func _build_components() -> void:
 	visual_head.mesh = head_sphere
 	visual_head.position = Vector3(0.0, 0.35, 0.2)
 	visual.add_child(visual_head)
+
+	if FROG_SCENE:
+		visual_shell.visible = false
+		visual_head.visible = false
+		frog_model = FROG_SCENE.instantiate()
+		frog_model.name = "FrogModel"
+		frog_model.scale = Vector3(0.48, 0.48, 0.48)
+		frog_model.position = Vector3(0.0, -0.42, 0.0)
+		visual.add_child(frog_model)
+		anim_player = frog_model.find_child("AnimationPlayer") as AnimationPlayer
+		if anim_player and anim_player.has_animation("FrogArmature|Frog_Jump"):
+			anim_player.play("FrogArmature|Frog_Jump")
 
 	add_child(visual)
 
@@ -86,6 +102,13 @@ func update_enemy(delta: float, _player: Node3D = null) -> void:
 			direction *= -1.0
 	else:
 		position += velocity * delta
+
+	if visual:
+		if current_state == State.SHELL_SLIDING:
+			visual.rotation.z += delta * 18.0 * (-direction)
+		else:
+			visual.rotation.z = 0.0
+			visual.rotation.y = (PI / 2.0) if direction > 0.0 else (-PI / 2.0)
 
 	if position.y < PlatformerConfig3D.DEATH_Y:
 		queue_free()

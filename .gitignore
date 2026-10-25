@@ -1,4 +1,6 @@
 .godot/
+*.uid
 *.translation
 .DS_Store
 *.tmp
+builds/
