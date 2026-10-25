@@ -13,6 +13,11 @@ const PlatformerMushroom3D = preload("res://scripts/mushroom_3d.gd")
 const PlatformerFlower3D = preload("res://scripts/flower_3d.gd")
 const PlatformerStar3D = preload("res://scripts/star_3d.gd")
 
+const TEX_HULL: Texture2D = preload("res://assets/textures/scifi/scifi_hull_plating.jpg")
+const TEX_BRICK: Texture2D = preload("res://assets/textures/scifi/scifi_cargo_brick.jpg")
+const TEX_QUESTION: Texture2D = preload("res://assets/textures/scifi/scifi_holo_cube.jpg")
+const TEX_PIPE: Texture2D = preload("res://assets/textures/scifi/scifi_pipe_conduit.jpg")
+
 signal coin_collected(col: int, row: int)
 signal goal_reached
 signal enemy_spawned(enemy: Node3D)
@@ -41,33 +46,53 @@ func _init() -> void:
 
 func _setup_materials() -> void:
 	mat_ground = StandardMaterial3D.new()
-	mat_ground.albedo_color = Color("#d97334") # Terracotta
-	mat_ground.roughness = 0.8
+	mat_ground.albedo_texture = TEX_HULL
+	mat_ground.albedo_color = Color("#ffffff")
+	mat_ground.roughness = 0.35
+	mat_ground.metallic = 0.65
+	mat_ground.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	mat_brick = StandardMaterial3D.new()
-	mat_brick.albedo_color = Color("#bf4026") # Dark Brick
-	mat_brick.roughness = 0.7
+	mat_brick.albedo_texture = TEX_BRICK
+	mat_brick.albedo_color = Color("#ffffff")
+	mat_brick.roughness = 0.4
+	mat_brick.metallic = 0.4
+	mat_brick.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	mat_question = StandardMaterial3D.new()
-	mat_question.albedo_color = Color("#f59e0b") # Gold
+	mat_question.albedo_texture = TEX_QUESTION
+	mat_question.albedo_color = Color("#ffffff")
 	mat_question.emission_enabled = true
+	mat_question.emission_texture = TEX_QUESTION
 	mat_question.emission = Color("#f59e0b")
-	mat_question.emission_energy_multiplier = 0.5
+	mat_question.emission_energy_multiplier = 0.7
+	mat_question.metallic = 0.5
+	mat_question.roughness = 0.3
+	mat_question.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	mat_spent = StandardMaterial3D.new()
-	mat_spent.albedo_color = Color("#64748b") # Slate gray
-	mat_spent.roughness = 0.9
+	mat_spent.albedo_texture = TEX_BRICK
+	mat_spent.albedo_color = Color("#475569")
+	mat_spent.roughness = 0.8
+	mat_spent.metallic = 0.6
+	mat_spent.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	mat_pipe = StandardMaterial3D.new()
-	mat_pipe.albedo_color = Color("#10b981") # Emerald Green
-	mat_pipe.roughness = 0.4
-	mat_pipe.metallic = 0.1
+	mat_pipe.albedo_texture = TEX_PIPE
+	mat_pipe.albedo_color = Color("#ffffff")
+	mat_pipe.roughness = 0.3
+	mat_pipe.metallic = 0.6
+	mat_pipe.emission_enabled = true
+	mat_pipe.emission_texture = TEX_PIPE
+	mat_pipe.emission = Color("#22c55e")
+	mat_pipe.emission_energy_multiplier = 0.35
+	mat_pipe.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	mat_flag = StandardMaterial3D.new()
-	mat_flag.albedo_color = Color("#fef08a") # Gold flagpole
+	mat_flag.albedo_color = Color("#38bdf8")
 	mat_flag.emission_enabled = true
-	mat_flag.emission = Color("#fef08a")
-	mat_flag.emission_energy_multiplier = 0.4
+	mat_flag.emission = Color("#0ea5e9")
+	mat_flag.emission_energy_multiplier = 0.8
 
 func clear() -> void:
 	for child in get_children():
@@ -389,36 +414,55 @@ func hit_block(block: StaticBody3D, is_big: bool = false) -> void:
 		coin_collected.emit(col, row)
 
 func _create_parallax_background_3d(level_length: float) -> void:
-	# Stylized Low-Poly Mountains at Z = -16.0 (Tiefenparallaxe durch 3D-Kamera)
-	var mat_mountain := StandardMaterial3D.new()
-	mat_mountain.albedo_color = Color("#223355") # Indigo Mountains
-	mat_mountain.roughness = 0.9
+	# Raumschiff-Aufbauten / Flottengürtel im Hintergrund (Tiefenparallaxe durch 3D-Kamera)
+	var mat_station := StandardMaterial3D.new()
+	mat_station.albedo_color = Color("#0f172a") # Dark navy hull
+	mat_station.metallic = 0.8
+	mat_station.roughness = 0.4
+	mat_station.emission_enabled = true
+	mat_station.emission = Color("#06b6d4") # Cyan sensor array glow
+	mat_station.emission_energy_multiplier = 0.2
 
-	for x in range(0, int(level_length + 60), 18):
-		var mesh_inst := MeshInstance3D.new()
-		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.0
-		cyl.bottom_radius = 8.0 + float(x % 6)
-		cyl.height = 12.0 + float(x % 4)
-		cyl.radial_segments = 4 # Low-poly Pyramide
-		cyl.material = mat_mountain
-		mesh_inst.mesh = cyl
-		mesh_inst.position = Vector3(float(x), 4.0, -16.0)
-		mesh_inst.rotation.y = PI / 4.0
-		add_child(mesh_inst)
+	var mat_beacon := StandardMaterial3D.new()
+	mat_beacon.albedo_color = Color("#38bdf8")
+	mat_beacon.emission_enabled = true
+	mat_beacon.emission = Color("#38bdf8")
+	mat_beacon.emission_energy_multiplier = 1.0
 
-	# Wolken bei Z = -24.0
-	var mat_cloud := StandardMaterial3D.new()
-	mat_cloud.albedo_color = Color("#e2e8f0")
-	mat_cloud.roughness = 0.5
+	for x in range(0, int(level_length + 60), 16):
+		var tower := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(4.0 + float(x % 5), 14.0 + float(x % 6), 3.0)
+		box.material = mat_station
+		tower.mesh = box
+		tower.position = Vector3(float(x), 5.0 + float(x % 3), -16.0)
+		add_child(tower)
 
-	for x in range(6, int(level_length + 50), 24):
-		var cloud := MeshInstance3D.new()
-		var sphere := SphereMesh.new()
-		sphere.radius = 2.0
-		sphere.height = 1.8
-		sphere.material = mat_cloud
-		cloud.mesh = sphere
-		cloud.position = Vector3(float(x), 11.0 + float(x % 3), -24.0)
-		cloud.scale = Vector3(2.5, 0.9, 1.0)
-		add_child(cloud)
+		# Signalleuchten auf den Raumschiff-Aufbauten
+		var beacon := MeshInstance3D.new()
+		var sph := SphereMesh.new()
+		sph.radius = 0.25
+		sph.height = 0.5
+		sph.material = mat_beacon
+		beacon.mesh = sph
+		beacon.position = Vector3(float(x), 12.5 + float(x % 6) * 0.5, -14.5)
+		add_child(beacon)
+
+	# Schwebende Solarmodule & Kommunikations-Arrays bei Z = -24.0
+	var mat_array := StandardMaterial3D.new()
+	mat_array.albedo_color = Color("#1e293b")
+	mat_array.metallic = 0.9
+	mat_array.roughness = 0.2
+	mat_array.emission_enabled = true
+	mat_array.emission = Color("#6366f1")
+	mat_array.emission_energy_multiplier = 0.3
+
+	for x in range(8, int(level_length + 50), 24):
+		var panel := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(8.0, 1.2, 0.4)
+		box.material = mat_array
+		panel.mesh = box
+		panel.position = Vector3(float(x), 11.0 + float(x % 4), -24.0)
+		panel.rotation.z = deg_to_rad(15.0 if (x % 2 == 0) else -15.0)
+		add_child(panel)

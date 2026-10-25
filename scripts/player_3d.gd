@@ -69,16 +69,16 @@ func _setup_alien_character() -> void:
 	if ALIEN_SCENE:
 		alien_model_normal = ALIEN_SCENE.instantiate()
 		alien_model_normal.name = "AlienNormal"
-		alien_model_normal.scale = Vector3(0.42, 0.42, 0.42)
-		alien_model_normal.position = Vector3(0.0, -0.45, 0.0)
+		alien_model_normal.scale = Vector3(0.30, 0.30, 0.30)
+		alien_model_normal.position = Vector3(0.0, -0.44, 0.0)
 		visual_mesh.add_child(alien_model_normal)
 		anim_normal = alien_model_normal.find_child("AnimationPlayer") as AnimationPlayer
 
 	if ALIEN_HELMET_SCENE:
 		alien_model_helmet = ALIEN_HELMET_SCENE.instantiate()
 		alien_model_helmet.name = "AlienHelmet"
-		alien_model_helmet.scale = Vector3(0.42, 0.42, 0.42)
-		alien_model_helmet.position = Vector3(0.0, -0.45, 0.0)
+		alien_model_helmet.scale = Vector3(0.30, 0.30, 0.30)
+		alien_model_helmet.position = Vector3(0.0, -0.44, 0.0)
 		visual_mesh.add_child(alien_model_helmet)
 		anim_helmet = alien_model_helmet.find_child("AnimationPlayer") as AnimationPlayer
 
@@ -316,14 +316,18 @@ func update_kinematics(delta: float, input_left: bool, input_right: bool, input_
 	if is_inside_tree() and get_world_3d() and get_world_3d().space.is_valid():
 		move_and_slide()
 
-		# 7. Kopfstoß an Decke
-		if is_on_ceiling():
-			for i in range(get_slide_collision_count()):
-				var collision := get_slide_collision(i)
-				var collider := collision.get_collider()
-				if collider is StaticBody3D:
-					if collider.is_in_group("question_blocks_3d") or collider.is_in_group("brick_blocks_3d"):
-						block_hit_from_below.emit(collider, is_big)
+		# 7. Kopfstoß an Decke und Stomp von oben
+		for i in range(get_slide_collision_count()):
+			var collision := get_slide_collision(i)
+			var collider := collision.get_collider()
+			if collider is StaticBody3D:
+				if is_on_ceiling() and (collider.is_in_group("question_blocks_3d") or collider.is_in_group("brick_blocks_3d")):
+					block_hit_from_below.emit(collider, is_big)
+			elif collider and collider.is_in_group("enemies_3d"):
+				var normal := collision.get_normal()
+				if normal.y > 0.4:
+					if collider.has_method("take_stomp"):
+						collider.take_stomp(self)
 	else:
 		position += velocity * delta
 

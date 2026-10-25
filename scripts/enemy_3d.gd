@@ -18,6 +18,8 @@ var anim_player: AnimationPlayer
 
 func _ready() -> void:
 	axis_lock_linear_z = true
+	floor_snap_length = 0.25
+	floor_constant_speed = true
 	add_to_group("enemies_3d")
 	_build_components()
 
@@ -67,8 +69,8 @@ func _build_components() -> void:
 		eye_right.visible = false
 		rat_model = RAT_SCENE.instantiate()
 		rat_model.name = "RatModel"
-		rat_model.scale = Vector3(0.48, 0.48, 0.48)
-		rat_model.position = Vector3(0.0, -0.35, 0.0)
+		rat_model.scale = Vector3(0.24, 0.24, 0.24)
+		rat_model.position = Vector3(0.0, -0.25, 0.0)
 		visual.add_child(rat_model)
 		anim_player = rat_model.find_child("AnimationPlayer") as AnimationPlayer
 		if anim_player and anim_player.has_animation("RatArmature|Rat_Run"):
@@ -98,7 +100,9 @@ func update_enemy(delta: float, _player: Node3D = null) -> void:
 	if is_inside_tree() and get_world_3d() and get_world_3d().space.is_valid():
 		move_and_slide()
 		if is_on_wall():
-			direction *= -1.0
+			var wall_normal := get_wall_normal()
+			if absf(wall_normal.x) > 0.6 and absf(wall_normal.y) < 0.4:
+				direction = -signf(wall_normal.x)
 	else:
 		position += velocity * delta
 
@@ -113,19 +117,32 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 
 	var player := body as PlatformerPlayer3D
+	if player.is_starman:
+		die_from_fireball()
+		return
 
-	# In 3D ist +Y oben, also Sprungabwärts = velocity.y < 0.0
-	var player_bottom: float = player.global_position.y - (PlatformerConfig3D.PLAYER_HEIGHT * 0.4 * player.scale.y)
-	var enemy_top: float = global_position.y + 0.25
+	# Großzügige Stomp-Erkennung:
+	# Spieler ist über dem Gegnerzentrum oder fällt in ihn hinein
+	var player_y: float = player.global_position.y if player.is_inside_tree() else player.position.y
+	var enemy_y: float = global_position.y if is_inside_tree() else position.y
+	var is_stomp: bool = (player_y > enemy_y + 0.12) or (player.velocity.y < -0.1 and player_y > enemy_y - 0.05)
 
-	if player.velocity.y < 0.0 and player_bottom >= enemy_top - 0.3:
-		# Stomp Erfolg
-		is_dead = true
-		if anim_player and anim_player.has_animation("RatArmature|Rat_Death"):
-			anim_player.play("RatArmature|Rat_Death")
-		player.bounce_after_stomp()
-		stomped.emit(self)
+	if is_stomp:
+		take_stomp(player)
+	else:
+		var killed := player.take_damage()
+		player_hurt.emit(killed)
 
+func take_stomp(player: PlatformerPlayer3D) -> void:
+	if is_dead:
+		return
+	is_dead = true
+	if anim_player and anim_player.has_animation("RatArmature|Rat_Death"):
+		anim_player.play("RatArmature|Rat_Death")
+	player.bounce_after_stomp()
+	stomped.emit(self)
+
+	if is_inside_tree() and visual:
 		var tween := create_tween()
 		if tween:
 			tween.tween_property(visual, "scale:y", 0.15, 0.08)
@@ -135,5 +152,21 @@ func _on_body_entered(body: Node3D) -> void:
 		else:
 			queue_free()
 	else:
-		var killed := player.take_damage()
-		player_hurt.emit(killed)
+		queue_free()
+
+func die_from_fireball() -> void:
+	if is_dead:
+		return
+	is_dead = true
+	stomped.emit(self)
+	if anim_player and anim_player.has_animation("RatArmature|Rat_Death"):
+		anim_player.play("RatArmature|Rat_Death")
+	if is_inside_tree() and visual:
+		var tween := create_tween()
+		if tween:
+			tween.tween_property(visual, "scale", Vector3.ZERO, 0.1)
+			tween.tween_callback(queue_free)
+		else:
+			queue_free()
+	else:
+		queue_free()

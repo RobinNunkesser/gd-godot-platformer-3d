@@ -23,6 +23,8 @@ var anim_player: AnimationPlayer
 
 func _ready() -> void:
 	axis_lock_linear_z = true
+	floor_snap_length = 0.25
+	floor_constant_speed = true
 	add_to_group("enemies_3d")
 	_build_components()
 
@@ -65,8 +67,8 @@ func _build_components() -> void:
 		visual_head.visible = false
 		frog_model = FROG_SCENE.instantiate()
 		frog_model.name = "FrogModel"
-		frog_model.scale = Vector3(0.48, 0.48, 0.48)
-		frog_model.position = Vector3(0.0, -0.42, 0.0)
+		frog_model.scale = Vector3(0.20, 0.20, 0.20)
+		frog_model.position = Vector3(0.0, -0.35, 0.0)
 		visual.add_child(frog_model)
 		anim_player = frog_model.find_child("AnimationPlayer") as AnimationPlayer
 		if anim_player and anim_player.has_animation("FrogArmature|Frog_Jump"):
@@ -99,7 +101,9 @@ func update_enemy(delta: float, _player: Node3D = null) -> void:
 	if is_inside_tree() and get_world_3d() and get_world_3d().space.is_valid():
 		move_and_slide()
 		if is_on_wall():
-			direction *= -1.0
+			var wall_normal := get_wall_normal()
+			if absf(wall_normal.x) > 0.6 and absf(wall_normal.y) < 0.4:
+				direction = -signf(wall_normal.x)
 	else:
 		position += velocity * delta
 
@@ -134,16 +138,16 @@ func _on_body_entered(body: Node3D) -> void:
 		die_from_fireball()
 		return
 
-	# In 3D: Sprung von oben = velocity.y < 0.0
-	var is_falling_on_top: bool = player.velocity.y < 0.0 and player.global_position.y > global_position.y + 0.2
+	# Großzügige Stomp-Erkennung:
+	# Spieler ist über dem Gegnerzentrum oder fällt in ihn hinein
+	var player_y: float = player.global_position.y if player.is_inside_tree() else player.position.y
+	var enemy_y: float = global_position.y if is_inside_tree() else position.y
+	var is_falling_on_top: bool = (player_y > enemy_y + 0.12) or (player.velocity.y < -0.1 and player_y > enemy_y - 0.05)
 
 	match current_state:
 		State.WALKING:
 			if is_falling_on_top:
-				current_state = State.SHELL_IDLE
-				visual_head.visible = false
-				player.bounce_after_stomp()
-				stomped.emit(self)
+				take_stomp(player)
 			else:
 				var killed := player.take_damage()
 				player_hurt.emit(killed)
@@ -155,8 +159,7 @@ func _on_body_entered(body: Node3D) -> void:
 
 		State.SHELL_SLIDING:
 			if is_falling_on_top:
-				current_state = State.SHELL_IDLE
-				player.bounce_after_stomp()
+				take_stomp(player)
 			else:
 				var killed := player.take_damage()
 				player_hurt.emit(killed)

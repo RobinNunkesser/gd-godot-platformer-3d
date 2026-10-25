@@ -56,7 +56,7 @@ func _build_components() -> void:
 		head.visible = false
 		snake_model = SNAKE_SCENE.instantiate()
 		snake_model.name = "SnakeModel"
-		snake_model.scale = Vector3(0.5, 0.5, 0.5)
+		snake_model.scale = Vector3(0.32, 0.32, 0.32)
 		snake_model.position = Vector3(0.0, 0.05, 0.0)
 		visual.add_child(snake_model)
 		anim_player = snake_model.find_child("AnimationPlayer") as AnimationPlayer

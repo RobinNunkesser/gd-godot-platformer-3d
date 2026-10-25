@@ -50,8 +50,8 @@ func _build_components() -> void:
 		mesh_inst.visible = false
 		wasp_model = WASP_SCENE.instantiate()
 		wasp_model.name = "WaspModel"
-		wasp_model.scale = Vector3(0.48, 0.48, 0.48)
-		wasp_model.position = Vector3(0.0, -0.22, 0.0)
+		wasp_model.scale = Vector3(0.18, 0.18, 0.18)
+		wasp_model.position = Vector3(0.0, -0.15, 0.0)
 		visual.add_child(wasp_model)
 		anim_player = wasp_model.find_child("AnimationPlayer") as AnimationPlayer
 		if anim_player and anim_player.has_animation("WaspArmature|Wasp_Flying"):
@@ -63,7 +63,7 @@ func _build_components() -> void:
 	area.name = "Hitbox3D"
 	var area_shape := CollisionShape3D.new()
 	var area_box := BoxShape3D.new()
-	area_box.size = Vector3(1.0, 0.6, 0.6)
+	area_box.size = Vector3(0.85, 0.55, 0.55)
 	area_shape.shape = area_box
 	area.add_child(area_shape)
 	area.body_entered.connect(_on_body_entered)
@@ -93,11 +93,12 @@ func _on_body_entered(body: Node3D) -> void:
 		die_from_fireball()
 		return
 
-	var is_falling_on_top: bool = player.velocity.y < 0.0 and player.global_position.y > global_position.y + 0.15
+	var player_y: float = player.global_position.y if player.is_inside_tree() else player.position.y
+	var enemy_y: float = global_position.y if is_inside_tree() else position.y
+	var is_falling_on_top: bool = (player_y > enemy_y + 0.1) or (player.velocity.y < -0.1 and player_y > enemy_y - 0.05)
 
 	if is_falling_on_top:
-		player.bounce_after_stomp()
-		die_from_fireball()
+		take_stomp(player)
 	else:
 		var killed := player.take_damage()
 		player_hurt.emit(killed)
